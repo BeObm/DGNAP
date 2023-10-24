@@ -21,7 +21,7 @@ import importlib
 
 def get_prediction(performance_records_path, e_search_space):
     if (config["predictor"]["predictor_dataset_type"]) == "graph":
-        trained_predictor_model = train_prediction_using_graph_dataset(performance_records_path)
+        trained_predictor_model = train_predictor_using_graph_dataset(performance_records_path)
         TopK_final = predict_and_rank(trained_predictor_model, e_search_space)
     elif (config["predictor"]["predictor_dataset_type"]) == "table":
         TopK_final = get_prediction_from_table(performance_records_path, e_search_space)
@@ -36,7 +36,7 @@ def get_PredictorModel(predictor_model):
     return PredictorModel, train_predictor, test_predictor
 
 
-def train_prediction_using_graph_dataset(predictor_dataset_folder):
+def train_predictor_using_graph_dataset(predictor_dataset_folder):
     set_seed()
     optimizer = config["predictor"]["optimizer"]
     dim = int(config["predictor"]["dim"])
@@ -194,4 +194,3 @@ def rank_graphs(model, dataset, batch_size=32):
     ranked_indices = sorted(range(len(scores)), key=lambda i: scores[i], reverse=True)
     ranked_graphs = [(dataset[i], rank+1) for rank, i in enumerate(ranked_indices)]
     return ranked_graphs
-

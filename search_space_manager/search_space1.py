@@ -5,13 +5,9 @@ from settings.config_file import *
 def create_e_search_space(a=0,b=1):   # a<b
 
     type_task=config['dataset']["type_task"]
-   
     nfcode=int(config["param"]["nfcode"])
     noptioncode=int(config["param"]["noptioncode"])
-  
-
     attention= ["GCNConv","GENConv","SGConv","linear","GraphConv"]
-
     agregation=['add',"max","mean"]
     activation=["elu","leaky_relu","Linear","relu","relu6","sigmoid","softplus","tanh"]
     multi_head=  [1, 2, 3, 4,6]
@@ -19,7 +15,6 @@ def create_e_search_space(a=0,b=1):   # a<b
     normalizer=["GraphNorm","InstanceNorm","BatchNorm"]
     dropout = [0.0, 0.2, 0.4, 0.6]
     sp={}
-
     sp['gnnConv1']=attention
     sp['gnnConv2']= attention
     sp['aggregation1']=agregation
@@ -38,7 +33,6 @@ def create_e_search_space(a=0,b=1):   # a<b
     sp['weight_decay']=[0,0.001,0.0005]
     sp["optimizer"] = ["adam"]
     sp['criterion'] = ['CrossEntropyLoss',"fn_loss","MultiMarginLoss"]
-
     if type_task=='graph_classification':
         sp['pooling'] = ["global_add_pool","global_max_pool","global_max_pool"]
     # elif type_task=='node classification' or type_task=="link prediction":

@@ -28,6 +28,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset", help="Dataset name", default="elliptic")
+    parser.add_argument("--search_space_name", help="search space name", default="spatial_gnap_gl")
     parser.add_argument("--search_metric", type=str, default="auc_pr", help="metric for search guidance")
     parser.add_argument("--predictor", type=str, default="GNN_ranking", help="predictor type") #""GNN_ranking","GNN_performance"","GNN_performance"
     parser.add_argument("--criterion", type=str, default="MarginRankingLoss", help="loss function for predictor") #""GNN_ranking","GNN_performance"","GNN_performance"
@@ -52,10 +53,9 @@ if __name__ == "__main__":
     dataset=get_dataset(type_task,dataset_root,dataset_name)
     # print(dataset)
 
-    e_search_space,option_decoder = create_e_search_space()
-    # e_search_space,option_decoder = create_baseline_search_space()
+    e_search_space,option_decoder,predictor_graph_edge_index = create_e_search_space(args.search_space_name)
 
-    performance_records_path = get_performance_distributions(e_search_space, dataset)
+    performance_records_path = get_performance_distributions(e_search_space, dataset,predictor_graph_edge_index)
     # performance_records_path = "predictor_training_data_elliptic"
     TopK_final = get_prediction(performance_records_path,e_search_space)
     best_model= get_best_model(TopK_final,option_decoder,dataset)

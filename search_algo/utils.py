@@ -116,54 +116,13 @@ def get_nodes_features(model_config, e_search_space):
     return x
 
 
-def get_edge_index(model_config):
-    edge_dict = {}
+def get_edge_index(model_config, predictor_graph_edge_index):
+    edge_dict = predictor_graph_edge_index
     node_idx = {}
-    #  variable to controll the random sampling to make sure options are distribute uniformly
     idx = 0
     for functions, options in model_config.items():
         node_idx[functions] = idx
         idx += 1
-
-    edge_dict['gnnConv1'] = ["normalize1", 'dropout1', 'activation1']
-    edge_dict['aggregation1'] = ["gnnConv1"]
-    edge_dict['multi_head1'] = ["gnnConv1"]
-    edge_dict['hidden_channels1'] = ["gnnConv1"]
-    edge_dict['normalize1'] = ["dropout1", 'activation1']
-    edge_dict['dropout1'] = ["activation1"]
-    edge_dict['activation1'] = ["gnnConv2"]
-
-    edge_dict['gnnConv2'] = ["normalize2", 'dropout2', 'activation2']
-    edge_dict['aggregation2'] = ["gnnConv2"]
-    edge_dict['multi_head2'] = ["gnnConv2"]
-    edge_dict['hidden_channels2'] = ["gnnConv2"]
-    edge_dict['normalize2'] = ["dropout2", 'activation2']
-    edge_dict['dropout2'] = ["activation2"]
-
-    edge_dict['mlp_layer'] = ["graph_filter"]
-    edge_dict['hidden_channels'] = ["mlp_layer", "graph_filter"]
-    edge_dict['activation'] = ["mlp_layer"]
-    edge_dict['graph_filter'] = ["attention"]
-    edge_dict['num_graph_filters'] = ["attention"]
-    edge_dict['num_signals'] = ["graph_filter"]
-    edge_dict['aggregation'] = ["graph_filter"]
-    edge_dict['normalization'] = ["graph_filter"]
-    edge_dict['lr_f'] = ["graph_filter"]
-    edge_dict['attention'] = ["criterion", "dropout"]
-    edge_dict['lr'] = ["criterion"]
-    edge_dict['weight_decay'] = ["criterion"]
-    edge_dict['dropout'] = ["mlp_layer"]
-
-    if config["dataset"]['type_task'] == "graph_classification":
-        edge_dict['activation2'] = ["pooling"]
-        edge_dict['pooling'] = ['criterion']
-    else:
-        edge_dict['activation2'] = ["criterion"]
-    edge_dict['lr'] = ["criterion", "weight_decay"]
-    edge_dict['weight_decay'] = ["criterion", "lr"]
-    edge_dict["criterion"] = ["optimizer"]
-    edge_dict["optimizer"] = []
-
     source = []
     target = []
     edge_index = []
@@ -183,7 +142,6 @@ def get_edge_index(model_config):
                 if elt in list(model_config.keys()):
                     source.append(node_idx[function])
                     target.append(node_idx[elt])
-
     edge_index.append(source)
     edge_index.append(target)
     edge_index = np.array(edge_index)

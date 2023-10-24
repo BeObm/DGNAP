@@ -36,16 +36,6 @@ from torch_geometric.nn.norm import GraphNorm, InstanceNorm, BatchNorm
 
 from settings.config_file import *
 
-set_seed()
-
-
-# def get_prediction(performance_records_path, e_search_space):
-#     if (config["param"]["predictor_dataset_type"]) == "graph":
-#         TopK_final = get_prediction_from_graph(performance_records_path, e_search_space)
-#     elif (config["param"]["predictor_dataset_type"]) == "table":
-#         TopK_final = get_prediction_from_table(performance_records_path, e_search_space)
-#     return TopK_final
-
 
 class Predictor(MessagePassing):
     def __init__(self, in_channels, dim, out_channels, drop_out):

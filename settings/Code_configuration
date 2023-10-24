@@ -1,0 +1,13 @@
+For data loading.
+The data loading is implemented in 2 main steps:
+1- Download the graph(s) data according to the task and dataset and return a torch_geometric.datasets object of DGL.Dataset object.
+ This is done with the function  get_dataset located in load_data/load_data.py. To modify, first add the dataset name in support_dataset_list then add the downloding script
+2- Load the Dataset according to the task using Dataloader and return train,val, and test Dataloader object with # in_channels and # class. This is done with the function load_dataset located in load_data/load_data.py
+ In this second step the dataloader function is build according to the task and dataset, thus every dataloader step may call a specific loading function located in load_data package
+
+
+For search space.
+The code support different search spaces that can be use for different tasks. The search space is created based on its name.
+to add a new search space just create a function named as follow: create_[search space name]_space
+
+For .
