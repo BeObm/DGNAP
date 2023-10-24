@@ -57,7 +57,7 @@ if __name__ == "__main__":
 
     performance_records_path = get_performance_distributions(e_search_space, dataset,predictor_graph_edge_index)
     # performance_records_path = "predictor_training_data_elliptic"
-    TopK_final = get_prediction(performance_records_path,e_search_space)
+    TopK_final = get_prediction(performance_records_path,e_search_space,predictor_graph_edge_index)
     best_model= get_best_model(TopK_final,option_decoder,dataset)
     total_search_time = round(time.time() - timestart, 2)
     add_config("time", "total_search_time", total_search_time)

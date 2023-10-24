@@ -19,10 +19,10 @@ from predictor_models import *
 import importlib
 
 
-def get_prediction(performance_records_path, e_search_space):
+def get_prediction(performance_records_path, e_search_space,predictor_graph_edge_index):
     if (config["predictor"]["predictor_dataset_type"]) == "graph":
         trained_predictor_model = train_predictor_using_graph_dataset(performance_records_path)
-        TopK_final = predict_and_rank(trained_predictor_model, e_search_space)
+        TopK_final = predict_and_rank(trained_predictor_model, e_search_space,predictor_graph_edge_index)
     elif (config["predictor"]["predictor_dataset_type"]) == "table":
         TopK_final = get_prediction_from_table(performance_records_path, e_search_space)
     return TopK_final
@@ -64,7 +64,7 @@ def train_predictor_using_graph_dataset(predictor_dataset_folder):
                       weight_decay=wd)
     criterion = map_predictor_criterion(config["predictor"]["criterion"])
 
-    best_loss = 999
+    best_loss = 99999999
     c = 0
     for i in tqdm(range(num_epoch)):
         loss = train_predictor(predictor_model=predictor_model,
@@ -74,7 +74,7 @@ def train_predictor_using_graph_dataset(predictor_dataset_folder):
 
         if loss < best_loss:
             best_loss = loss
-            best_model = copy.deepcopy(predictor_model)
+            best_predictor_model = copy.deepcopy(predictor_model)
         else:
             c += 1
             if c == int(config["predictor"]['patience']):
@@ -89,7 +89,7 @@ def train_predictor_using_graph_dataset(predictor_dataset_folder):
     for metric, value in predictor_performance.items():
         add_config("results", f"{metric}_train", value)
         print(f"{metric}_train: {value}")
-    print(f"Neural predictor training achieve in {round((time.time() - start_train_time) / 60, 3)} minutes \n")
+    print(f"Neural predictor training completed in {round((time.time() - start_train_time) / 60, 3)} minutes \n")
     add_config("time", "predictor_training_time", (time.time()-start_train_time))
 
     predictor_performance = test_predictor(model=best_model,
@@ -100,18 +100,19 @@ def train_predictor_using_graph_dataset(predictor_dataset_folder):
         add_config("results", f"{metric}_val", value)
         print(f"{metric}_test: {value}")
 
-    return best_model
+    return best_predictor_model
 
 
-def predict_and_rank(predictor_model,e_search_space):
+def predict_and_rank(predictor_model,e_search_space,predictor_graph_edge_index):
     set_seed()
     k = int(config["param"]["k"])
     predict_sample = int(config["param"]["predict_sample"])
     search_metric = config["param"]["search_metric"]
+    metric_rule = config["param"]["best_search_metric_rule"]
     set_seed()
 
     print(f"{'=**=' * 10}  Sampling architecture from search space {'=**=' * 10} ")
-    sample_list = random_sample(e_search_space=e_search_space, n_sample=predict_sample, predictor=True)
+    sample_list = random_sampling(e_search_space=e_search_space, n_sample=predict_sample, predictor=True)
 
     print(f"\n {'=**=' * 10}  Starting predicting architecture performances {'=**=' * 10} ")
     lists = [elt for elt in range(0, len(sample_list), int(config["param"]["batch_sample"]))]
@@ -128,30 +129,36 @@ def predict_and_rank(predictor_model,e_search_space):
         graph_list = []
         for model_config in sample:
             x = get_nodes_features(model_config, e_search_space)
-            edge_index = get_edge_index(model_config)
+            edge_index = get_edge_index(model_config,predictor_graph_edge_index)
             graphdata = Data(x=x, edge_index=edge_index, num_nodes=x.shape[0],
                              model_config_choices=deepcopy(model_config))
             graph_list.append(graphdata)
 
         sample_dataset = DataLoader(graph_list, batch_size=Batch_Size, shuffle=False)
 
-        TopK = predict_accuracy_using_graph(predictor_model, sample_dataset)
+        TopK = predict_neural_performance_using_gnn(predictor_model, sample_dataset)
         TopK_models.append(TopK)
 
     TopK_model = pd.concat(TopK_models)
-    TopK_model = TopK_model.nlargest(k, search_metric, keep="all")
+
+    if metric_rule == "max":
+         TopK_model = TopK_model.nlargest(k, search_metric, keep="all")
+    elif metric_rule == 'min':
+        TopK_model = TopK_model.nsmallest(k, search_metric, keep="all")
+
     TopK_final = TopK_model[:k]
 
     prediction_time = round(time.time() - start_predict_time, 2)
-    print(f"Architecture performances prediction achieved in {round(prediction_time / 60, 3)} minutes")
+    print(f" {len(lists)} Architecture performances predicted in {round(prediction_time / 60, 3)} minutes")
     add_config("time", "pred_time", prediction_time)
 
     return TopK_final
 
 
-def predict_accuracy_using_graph(model, graphLoader):
+def predict_neural_performance_using_gnn(model, graphLoader):
     set_seed()
     search_metric = config["param"]["search_metric"]
+    metric_rule = config["param"]["best_search_metric_rule"]
     model.eval()
     prediction_dict = {'model_config': [], search_metric: []}
     k = int(config["param"]["k"])
@@ -177,7 +184,10 @@ def predict_accuracy_using_graph(model, graphLoader):
         prediction_dict[search_metric].extend(performance)
 
     df = pd.DataFrame.from_dict(prediction_dict)
-    TopK = df.nlargest(n=k, columns=search_metric, keep="all")
+    if metric_rule == "max":
+         TopK = df.nlargest(n=k, columns=search_metric, keep="all")
+    elif metric_rule == 'min':
+        TopK = df.nsmallest(n=k, columns=search_metric, keep="all")
     TopK = TopK[:k]
     return TopK
 
