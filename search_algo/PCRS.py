@@ -74,7 +74,7 @@ def get_performance_distributions(e_search_space,
                 best_sample[search_metric] = best_performance
                 sys.stdout.write(
                     f" -------> {search_metric} = {round(model_performance, 4)} ===**===> Best Performance \n\n")
-                else:
+            else:
                 sys.stdout.write(f" ------> {search_metric} = {round(model_performance, 4)}  \n\n")
 
         elif metric_rule == "min":
