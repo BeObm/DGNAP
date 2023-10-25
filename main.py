@@ -27,16 +27,18 @@ if __name__ == "__main__":
     manage_budget()
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", help="Dataset name", default="elliptic")
+    parser.add_argument("--dataset", help="Dataset name", default="BZR")
+    parser.add_argument("--type_task", help="type_task name", default="graph_classification", choices=["graph_anomaly", "graph_classification", "graph_regression","node_classification"])
     parser.add_argument("--search_space_name", help="search space name", default="spatial_gnap_gl")
     parser.add_argument("--search_metric", type=str, default="auc_pr", help="metric for search guidance")
-    parser.add_argument("--predictor", type=str, default="GNN_ranking", help="predictor type") #""GNN_ranking","GNN_performance"","GNN_performance"
-    parser.add_argument("--criterion", type=str, default="MarginRankingLoss", help="loss function for predictor") #""GNN_ranking","GNN_performance"","GNN_performance"
+    parser.add_argument("--predictor", type=str, default="GNN_performance", help="predictor type") # "GNN_ranking","GNN_performance"
+    parser.add_argument("--criterion", type=str, default="MarginRankingLoss", help="loss function for predictor")
     args = parser.parse_args()
     add_config("dataset", "dataset_name", args.dataset)
     add_config("param", "search_metric", args.search_metric)
     add_config("predictor", "Predictor_model", args.predictor)
     add_config("predictor", "criterion", args.criterion)
+    add_config("dataset", "type_task", args.type_task)
     create_paths()
     torch.cuda.empty_cache()
     
@@ -45,10 +47,10 @@ if __name__ == "__main__":
 
 
     # torch.cuda.empty_cache()
-    type_task=config["dataset"]["type_task"]
-    dataset_name=config["dataset"]["dataset_name"]
+    type_task = args.type_task
+    dataset_name = args.dataset
     dataset_root =config["dataset"]["dataset_root"]
-    print(f"code running on {dataset_name} dataset")
+    print(f"{'**'*10} code running on {dataset_name} dataset for {args.type_task} task {'**'*10}")
     
     dataset=get_dataset(type_task,dataset_root,dataset_name)
     # print(dataset)

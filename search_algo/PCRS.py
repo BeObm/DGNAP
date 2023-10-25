@@ -131,25 +131,40 @@ def get_best_model(topk_list, option_decoder, dataset):
     torch.cuda.empty_cache()
     set_seed()
     search_metric = config["param"]["search_metric"]
+    metric_rule = config["param"]["best_search_metric_rule"]
+
     best_loss_param_path = f"{config['path']['predictor_weight_path']}/best_dist_param.pth"
 
     z_topk = int(config["param"]["z_topk"])
     epochs = int(config["param"]["topk_model_epochs"])
     start_time = time.time()
-    max_performace = 0
+    if metric_rule == "max":
+        max_performace = -99999999
+    elif metric_rule == 'min':
+        max_performace = 99999999
+    else:
+        print(
+            f"{'++' * 20} {metric_rule} is an invalid rule. Metric rule should be 'min' or 'max'")
+        sys.exit()
     print(f"\n {'=**=' * 15}  Training top-k models  {'=**=' * 15}")
     try:  # Recuperer le meilleur model present dans le dataset concu en phase 1
-        Y = 0
+        if metric_rule == "max":
+            Y = -99999999
+        elif metric_rule == 'min':
+            Y = 99999999
         for filename in glob.glob(config["path"]["predictor_dataset_folder"] + '/*'):
             data = torch.load(filename)
             data.y = data.y.view(-1, 1)
-            if Y < data.y.item():
-                Y = data.y.item()
-                submodel = data.model_config_choices
+            if metric_rule == "max":
+                if Y < data.y.item():
+                    Y = data.y.item()
+                    submodel = data.model_config_choices
+            elif metric_rule == 'min':
+                if Y > data.y.item():
+                    Y = data.y.item()
+                    submodel = data.model_config_choices
             max_performace = Y
-
             bestmodel = copy.deepcopy(submodel)
-
             for k, v in bestmodel.items():
                 if k != search_metric:
                     bestmodel[k] = v[0]
@@ -190,13 +205,27 @@ def get_best_model(topk_list, option_decoder, dataset):
         predicted_performance.append(row[search_metric])
         true_performance.append(model_performance)
 
-        if max_performace < model_performance:
-            max_performace = model_performance
-            bestmodel = copy.deepcopy(dict_model)
-            sys.stdout.write(
-                f" ----------> {search_metric} = {round(model_performance, 4)} ===**=== Best Performance \n\n")
+        if metric_rule == "max":
+            if model_performance > max_performace:
+                max_performace = model_performance
+                bestmodel = copy.deepcopy(dict_model)
+                sys.stdout.write(
+                    f" -------> {search_metric} = {round(model_performance, 4)} ===**===> Best Performance \n\n")
+            else:
+                sys.stdout.write(f" ------> {search_metric} = {round(model_performance, 4)}  \n\n")
+
+        elif metric_rule == "min":
+            if model_performance < max_performace:
+                max_performace = model_performance
+                bestmodel = copy.deepcopy(dict_model)
+                sys.stdout.write(
+                    f" -------> {search_metric} = {round(model_performance, 4)} ===**===> Best Performance \n\n")
+            else:
+                sys.stdout.write(f" ------> {search_metric} = {round(model_performance, 4)}  \n\n")
         else:
-            sys.stdout.write(f" ----------> {search_metric} = {round(model_performance, 4)}  \n\n")
+            print(
+                f"{'++' * 10} {metric_rule} is an invalid rule. Metric rule should be 'min' or 'max'{'++'* 10}")
+            sys.exit()
 
     predictor_performance = evaluate_model_predictor(true_performance, predicted_performance, metrics_list,
                                                      title="Predictor test")

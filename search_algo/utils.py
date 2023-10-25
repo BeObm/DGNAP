@@ -15,7 +15,7 @@ import warnings
 def map_downstream_task_metrics():
 
     if config["dataset"]["type_task"] == "graph_anomaly":
-        return [ "F1_macro","roc_auc","auc_pr","F1_score"]#"precision", "recall","F1_score",
+        return [ "F1_macro","roc_auc","auc_pr","F1_score"] #"precision", "recall","F1_score",
 
     elif config["dataset"]["type_task"] == "graph_classification":
         return ["Accuracy_score", "Balanced_accuracy_score"]
@@ -189,12 +189,12 @@ def evaluate_model(y_true, y_pred,type_data="val"):
     if type_data=="val":
         metric_obj = importlib.import_module(f"search_algo.utils")
         metric_function = getattr(metric_obj, search_metric)
-        predictor_performances[search_metric] = np.round(metric_function(np.squeeze(y_true), np.squeeze(y_pred)), 4)
+        predictor_performances[search_metric] = metric_function(np.squeeze(y_true), np.squeeze(y_pred))
     else:
         for metric in metrics_list:
             metric_obj = importlib.import_module(f"search_algo.utils")
             metric_function = getattr(metric_obj, metric)
-            predictor_performances[metric] = np.round(metric_function(np.squeeze(y_true), np.squeeze(y_pred)), 4)
+            predictor_performances[metric] = metric_function(np.squeeze(y_true), np.squeeze(y_pred))
 
 
     # col = "blue"

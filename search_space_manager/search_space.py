@@ -139,7 +139,7 @@ def create_spatial_gnap_gl_space():
     attention = ["GCNConv", "GENConv", "SGConv", "linear", "GraphConv"]
     agregation = ['add', "max", "mean"]
     activation = ["Relu", "Elu", "linear", "Softplus"]
-    multi_head = [1]
+    multi_head = [1,2]
     hidden_channels = [64, 128]
     normalizer = ["GraphNorm", "InstanceNorm"]
     dropout = [0.0, 0.2, 0.4]

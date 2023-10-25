@@ -6,6 +6,7 @@ from sklearn.metrics import mean_squared_error, r2_score
 import time
 from tqdm import tqdm
 import math
+import sys
 from predictor_models.utils import *
 from search_algo.utils import *
 from torch_geometric.data import Data
@@ -145,7 +146,10 @@ def predict_and_rank(predictor_model,e_search_space,predictor_graph_edge_index):
          TopK_model = TopK_model.nlargest(k, search_metric, keep="all")
     elif metric_rule == 'min':
         TopK_model = TopK_model.nsmallest(k, search_metric, keep="all")
-
+    else:
+        print(
+            f"{'++' * 20} {metric_rule} is an invalid rule. Metric rule should be 'min' or 'max'")
+        sys.exit()
     TopK_final = TopK_model[:k]
 
     prediction_time = round(time.time() - start_predict_time, 2)
