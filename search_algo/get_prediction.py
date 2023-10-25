@@ -82,7 +82,7 @@ def train_predictor_using_graph_dataset(predictor_dataset_folder):
                 break
     add_config("predictor", "best_loss", round(best_loss,6))
     metrics_list = map_predictor_metrics()
-    predictor_performance = test_predictor(model=best_model,
+    predictor_performance = test_predictor(model=best_predictor_model,
                                            test_loader=train_loader,
                                            metrics_list=metrics_list,
                                            title="Predictor training test")
@@ -93,7 +93,7 @@ def train_predictor_using_graph_dataset(predictor_dataset_folder):
     print(f"Neural predictor training completed in {round((time.time() - start_train_time) / 60, 3)} minutes \n")
     add_config("time", "predictor_training_time", (time.time()-start_train_time))
 
-    predictor_performance = test_predictor(model=best_model,
+    predictor_performance = test_predictor(model=best_predictor_model,
                                            test_loader=val_loader,
                                            metrics_list=metrics_list,
                                            title="Predictor validation test")

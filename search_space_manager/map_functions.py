@@ -5,13 +5,13 @@ from settings.config_file import *
 import torch.nn.functional as F
 import torch.nn as nn
 from torch_geometric.nn.norm import GraphNorm, InstanceNorm,BatchNorm
-# from torch_geometric.nn import GENConv, GraphUNet,HypergraphConv,GraphConv,CGConv,GATConv,GCNConv,TransformerConv
-# from torch_geometric.nn import global_mean_pool, global_max_pool,global_add_pool,GlobalAttention
-# from torch_geometric.nn import SuperGATConv,GCN2Conv,GINEConv,PNAConv,DeepGCNLayer,FiLMConv
-# from torch_geometric.nn import FastRGCNConv,RGCNConv,MFConv,APPNP,SGConv,ARMAConv,TAGConv,AGNNConv,GATv2Conv
-# from torch_geometric.nn import FeaStConv,PPFConv,XConv,DynamicEdgeConv,EdgeConv,NNConv,GMMConv,PointNetConv
-# from torch_geometric.nn import HGTConv,GeneralConv,PDNConv,EGConv,FAConv,WLConv,PANConv,ClusterGCNConv,LEConv
-# from torch_geometric.nn import GraphNorm,DenseSAGEConv,DenseGraphConv,DenseGCNConv,MetaLayer
+from torch_geometric.nn import GENConv, GraphUNet,HypergraphConv,GraphConv,CGConv,GATConv,GCNConv,TransformerConv
+from torch_geometric.nn import global_mean_pool, global_max_pool,global_add_pool,GlobalAttention
+from torch_geometric.nn import SuperGATConv,GCN2Conv,GINEConv,PNAConv,DeepGCNLayer,FiLMConv
+from torch_geometric.nn import FastRGCNConv,RGCNConv,MFConv,APPNP,SGConv,ARMAConv,TAGConv,AGNNConv,GATv2Conv
+from torch_geometric.nn import FeaStConv,PPFConv,XConv,DynamicEdgeConv,EdgeConv,NNConv,GMMConv,PointNetConv
+from torch_geometric.nn import HGTConv,GeneralConv,PDNConv,EGConv,FAConv,WLConv,PANConv,ClusterGCNConv,LEConv
+from torch_geometric.nn import GraphNorm,DenseSAGEConv,DenseGraphConv,DenseGCNConv,MetaLayer
 from search_space_manager.appnp  import *
 from search_space_manager.arma  import *
 from search_space_manager.bernnet  import *
@@ -51,6 +51,8 @@ def map_num_graph_filters(name):
 def map_num_signals(name):
     return name
 
+def map_multi_head(name):
+    return name
 def map_attention(name):
     if name.lower() == 'relu6':
         return nn.ReLU6()
@@ -129,7 +131,7 @@ def map_normalization(normalizer):
     elif normalizer=="BatchNorm":
         return BatchNorm
     elif normalizer==None or normalizer==False:
-        return None
+        return False
     elif normalizer in ['sym', 'rw'] :
         return normalizer
 
@@ -328,18 +330,19 @@ class LinearConv(nn.Module):
 
 
 def map_criterion(criterion):
-    weights = torch.Tensor([1., 1.])
 
     if criterion=='CrossEntropyLoss':
-        return torch.nn.CrossEntropyLoss(weight=weights.to(device))
+        return torch.nn.CrossEntropyLoss()
     elif criterion =="CTCLoss":
-        return torch.nn.CTCLoss(weight=weights.to(device))
+        return torch.nn.CTCLoss()
     elif criterion =="MultiMarginLoss":
-        return torch.nn.MultiMarginLoss(weight=weights.to(device))
+        return torch.nn.MultiMarginLoss()
     elif criterion =="BCEWithLogitsLoss":
-        return torch.nn.BCEWithLogitsLoss(weight=weights.to(device))
+        return torch.nn.BCEWithLogitsLoss()
     elif criterion =="fn_loss":
-        return F.nll_loss(weight=weights.to(device))
+        return F.nll_loss
+    elif criterion == "MSELoss":
+        return torch.nn.MSELoss(reduction='sum')
     else:
         map_function_error(criterion)
         

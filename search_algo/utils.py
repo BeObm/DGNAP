@@ -179,12 +179,15 @@ def seed_worker(worker_id):
 
 
 def evaluate_model(y_true, y_pred,type_data="val"):
-    search_metric = config["param"]["search_metric"]
     metrics_list = map_downstream_task_metrics()
+    search_metric = config["param"]["search_metric"]
+    if search_metric not in metrics_list:
+        print(f"{search_metric} is not a metric available for {config['dataset']['type_task']} task")
+        exit()
     predictor_performances = {}
    
-    y_true = y_true.flatten().cpu()
-    y_pred = y_pred.flatten().cpu()
+    # y_true = y_true.flatten().cpu()
+    # y_pred = y_pred.flatten().cpu()
 
     if type_data=="val":
         metric_obj = importlib.import_module(f"search_algo.utils")

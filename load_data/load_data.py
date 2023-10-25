@@ -80,6 +80,7 @@ def get_dataset(type_task, dataset_root, dataset_name, normalize_features=True, 
 
         elif dataset_name in ["DD", "PROTEINS", "ENZYMES", "BZR", "COLLAB", "IMDB-BINARY"]:
             dataset = TUDataset(root=dataset_root, name=dataset_name)  # ,use_node_attr=True,use_edge_attr=True
+            dataset = dataset.shuffle()
         elif dataset_name == 'molecule':
             dataset = MoleculeDataset(dataset_root, dataset_name)
             dataset.num_classes = dataset[0].num_classes
@@ -120,6 +121,19 @@ def load_dataset(dataset, batch_dim=Batch_Size):
             test_loader = train_loader = val_loader = Load_autogad_dataset(dataset)
             in_channels = dataset.ndata['feature'].shape[1]
         num_class = 2
+    elif type_task == "graph_classification":
+        n = int(len(dataset) * 20 / 100)
+        test_dataset = dataset[:n]
+        val_dataset = dataset[n:2 * n]
+        train_dataset = dataset[2 * n:]
+        in_channels = dataset.num_node_features
+        num_class = dataset.num_classes
+        train_loader = DataLoader(train_dataset, batch_size=batch_dim, shuffle=True)
+        val_loader = DataLoader(val_dataset, batch_size=batch_dim, shuffle=False)
+        test_loader = DataLoader(test_dataset, batch_size=batch_dim, shuffle=False)
+        add_config("dataset", "len_traindata", len(train_dataset))
+        add_config("dataset", "len_testdata", len(test_dataset))
+        add_config("dataset", "len_valdata", len(val_loader))
     else:
         if config["dataset"]["shufle_dataset"] == True:
             train_dataset, train_dataset, train_dataset = shuffle_dataset(dataset)

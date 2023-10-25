@@ -33,12 +33,8 @@ def set_seed(num_seed=num_seed):
 
 project_root_dir = os.path.abspath(os.getcwd())
 
-type_task = "graph_anomaly"  # it could be "graph classification", "link prediction",node classification
-dataset_name = "elliptic"  # Citeseer,
-
-
 # Second  level of  running configurations
-def create_config_file():
+def create_config_file(type_task,dataset_name):
     configs_folder = osp.join(project_root_dir, f'results/{type_task}/{dataset_name}/{RunCode}')
     os.makedirs(configs_folder, exist_ok=True)
     config_filename = f"{configs_folder}/ConfigFile_{RunCode}.ini"
@@ -57,18 +53,18 @@ def create_config_file():
         "project_dir": project_root_dir,
         'config_filename': config_filename,
         "run_code": RunCode,
-        "budget":800 ,
-        "k": 50,
+        "budget":800,
+        "k": 100,
         "z_sample": 1,  # Number of time  sampled models are trained before we report their performance
         "z_topk": 1,
-        "z_final": 10,
+        "z_final": 2,
         "train_ratio":0.4,
         "nfcode": 56,  # number of digit for each function code when using embedding method
         "noptioncode": 8,
-        "sample_model_epochs":300,
-        "topk_model_epochs": 300,
-        "best_model_epochs": 300,
-        "patience":1000,
+        "sample_model_epochs":200,
+        "topk_model_epochs": 200,
+        "best_model_epochs": 200,
+        "patience":20,
         'search_metric':"roc_auc",    #matthews_corr_coef, balanced_accuracy_score, accuracy_score, roc_auc, auc_pr
         'best_search_metric_rule':"max", # max
         "encoding_method": "one_hot",  # ={one_hot, embedding,index_embedding}
@@ -78,7 +74,7 @@ def create_config_file():
         'type_input_graph': "directed",
         "use_paralell": "no",
         "learning_type": "supervised",
-        "predict_sample": 50000,
+        "predict_sample": 500000,
         "batch_sample": 10000
     }
 
@@ -92,10 +88,10 @@ def create_config_file():
         "lr": 0.001,
         "wd": 0.0005,
         "momentum":0.9,
-        "num_epoch": 80,
-        "criterion":"MarginRankingLoss", # , [MSELoss,]  [PairwiseLoss, MarginRankingLoss]
+        "num_epoch": 500,
+        "criterion":"MSELoss", # , [MSELoss,]  [PairwiseLoss, MarginRankingLoss]
         "optimizer":"adam",
-        "patience":2000
+        "patience":45
     }
 
     config["time"] = {

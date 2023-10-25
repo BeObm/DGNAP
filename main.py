@@ -22,22 +22,24 @@ import argparse
 
 if __name__ == "__main__":
     set_seed()
-    create_config_file()
 
-    manage_budget()
+
+
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", help="Dataset name", default="BZR")
+    parser.add_argument("--dataset", help="Dataset name", default="ENZYMES")
     parser.add_argument("--type_task", help="type_task name", default="graph_classification", choices=["graph_anomaly", "graph_classification", "graph_regression","node_classification"])
-    parser.add_argument("--search_space_name", help="search space name", default="spatial_gnap_gl")
-    parser.add_argument("--search_metric", type=str, default="auc_pr", help="metric for search guidance")
+    parser.add_argument("--search_space_name", help="search space name", default="spatial_gnap_gl_space")
+    parser.add_argument("--search_metric", type=str, default="Accuracy_score", help="metric for search guidance")
     parser.add_argument("--predictor", type=str, default="GNN_performance", help="predictor type") # "GNN_ranking","GNN_performance"
-    parser.add_argument("--criterion", type=str, default="MarginRankingLoss", help="loss function for predictor")
+    parser.add_argument("--predictor_criterion", type=str, default="MSELoss", help="loss function for predictor")
     args = parser.parse_args()
+    create_config_file(args.type_task,args.dataset)
+    manage_budget()
     add_config("dataset", "dataset_name", args.dataset)
     add_config("param", "search_metric", args.search_metric)
     add_config("predictor", "Predictor_model", args.predictor)
-    add_config("predictor", "criterion", args.criterion)
+    add_config("predictor", "criterion", args.predictor_criterion)
     add_config("dataset", "type_task", args.type_task)
     create_paths()
     torch.cuda.empty_cache()

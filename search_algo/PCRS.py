@@ -36,7 +36,7 @@ def get_performance_distributions(e_search_space,
     search_metric = config["param"]["search_metric"]
 
     timestart = time.time()
-    print(f' \n  {"#" * 20} Getting {search_metric}  of  {n_sample} models {"#" * 20} \n')
+    print(f' \n  {"#" * 10} Getting {search_metric}  of  {n_sample} models {"#" * 10} \n')
 
     if metric_rule == 'max':
         best_performance = -99999999
@@ -48,8 +48,8 @@ def get_performance_distributions(e_search_space,
     graph_list = []
 
     train_loader, val_loader, test_loader, in_channels, num_class = load_dataset(dataset)
-    train_loader = train_loader.to(device)
-    val_loader = val_loader.to(device)
+    # train_loader = train_loader.to(device)
+    # val_loader = val_loader.to(device)
     for no, submodel in enumerate(model_list):
 
         submodel_config = {}
@@ -88,7 +88,7 @@ def get_performance_distributions(e_search_space,
                 sys.stdout.write(f" ------> {search_metric} = {round(model_performance, 4)}  \n\n")
         else:
             print(
-                f"{'++' * 10} {metric_rule} is an invalid rule. Metric rule should be 'min' or 'max'{'++'* 10}")
+                f"{'++' * 10} {metric_rule} is an invalid rule. Metric rule should be 'min' or 'max'{'++' * 10}")
             sys.exit()
 
         # =**======**======**======**===  transform model configuration into predictor training sample data ===**======**======**=
@@ -111,7 +111,7 @@ def get_performance_distributions(e_search_space,
             predictor_dataset[search_metric].append(model_performance)
         else:
             print(
-                f"{'++' * 20} Incorrect predictor_dataset_type)")
+                f"{'++' * 10} Incorrect predictor_dataset_type)")
             sys.exit()
 
     distribution_time = round(time.time() - timestart, 2)
@@ -144,7 +144,7 @@ def get_best_model(topk_list, option_decoder, dataset):
         max_performace = 99999999
     else:
         print(
-            f"{'++' * 20} {metric_rule} is an invalid rule. Metric rule should be 'min' or 'max'")
+            f"{'++' * 10} {metric_rule} is an invalid rule. Metric rule should be 'min' or 'max'")
         sys.exit()
     print(f"\n {'=**=' * 15}  Training top-k models  {'=**=' * 15}")
     try:  # Recuperer le meilleur model present dans le dataset concu en phase 1
@@ -191,8 +191,8 @@ def get_best_model(topk_list, option_decoder, dataset):
                         dict_model[function] = option_decoder[row[function]]
 
         train_loader, val_loader, test_loader, in_channels, num_class = load_dataset(dataset)
-        train_loader = train_loader.to(device)
-        val_loader = val_loader.to(device)
+        # train_loader = train_loader.to(device)
+        # val_loader = val_loader.to(device)
         sys.stdout.write(f"Architecture {num_model}/{len(topk_list)}:{[dict_model[opt] for opt in dict_model.keys()]} ")
         model_performance = run_model(submodel_config=dict_model,
                                       train_data=train_loader,
@@ -224,7 +224,7 @@ def get_best_model(topk_list, option_decoder, dataset):
                 sys.stdout.write(f" ------> {search_metric} = {round(model_performance, 4)}  \n\n")
         else:
             print(
-                f"{'++' * 10} {metric_rule} is an invalid rule. Metric rule should be 'min' or 'max'{'++'* 10}")
+                f"{'++' * 10} {metric_rule} is an invalid rule. Metric rule should be 'min' or 'max'{'++' * 10}")
             sys.exit()
 
     predictor_performance = evaluate_model_predictor(true_performance, predicted_performance, metrics_list,
@@ -254,8 +254,24 @@ def get_option_maps(submodel):
     model_config = {}
     set_seed()
     for component, value in submodel.items():
+        if component in ['gnnConv1', "gnnConv2"]:
+            comp_tmp = "gnn_model"
+        elif component in ['aggregation1', "aggregation2"]:
+            comp_tmp = "aggregation"
+        elif component in ['normalize1', "normalize2"]:
+            comp_tmp = "normalization"
+        elif component in ['activation1', "activation2"]:
+            comp_tmp = "activation"
+        elif component in ['multi_head1', "multi_head2"]:
+            comp_tmp = "multi_head"
+        elif component in ['hidden_channels1', "hidden_channels2"]:
+            comp_tmp = "hidden_channels"
+        elif component in ['dropout1', "dropout2"]:
+            comp_tmp = "dropout"
+        else:
+            comp_tmp=component
         component_module = importlib.import_module("search_space_manager.map_functions")
-        map_func = getattr(component_module, f"map_{component}")
+        map_func = getattr(component_module, f"map_{comp_tmp}")
         map_func_value = map_func(value)
         model_config[component] = map_func_value
     return model_config
@@ -318,7 +334,7 @@ def run_model(submodel_config, train_data, test_data, in_chanels, num_class, epo
                         break
             else:
                 print(
-                    f"{'++' * 20} {metric_rule} is an invalid rule. Metric rule should be 'min' or 'max'")
+                    f"{'++' * 10} {metric_rule} is an invalid rule. Metric rule should be 'min' or 'max'")
                 sys.exit()
 
         performance_score = test_model(best_model, test_data, type_data)

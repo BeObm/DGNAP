@@ -22,8 +22,6 @@ def get_test_performance(submodel, dataset):
     
     print(f'\n Getting final performance  on test dataset')
     train_loader, val_loader, test_loader, in_channels, num_class = load_dataset(dataset)
-    train_loader = train_loader.to(device)
-    test_loader = test_loader.to(device)
 
     model_performance = run_model(submodel_config=submodel,
                                   train_data=train_loader,

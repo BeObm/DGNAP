@@ -18,21 +18,18 @@ set_seed()
 class GNN_Model(MessagePassing):
     def __init__(self, param_dict):
         super(GNN_Model, self).__init__()
-        self.dataset = param_dict['dataset']
+        self.in_feat=param_dict["in_channels"]
+        self.num_class =param_dict["num_class"]
         self.aggr1 = param_dict['aggregation1']
         self.aggr2 = param_dict['aggregation2']
         self.hidden_channels1 = int(param_dict['hidden_channels1'])
         self.hidden_channels2 = int(param_dict['hidden_channels2'])
         self.head1 = param_dict['multi_head1']
         self.head2 = param_dict['multi_head2']
-        self.type_task = param_dict['type_task']
+        self.type_task = config["dataset"]["type_task"]
         self.gnnConv1 = param_dict['gnnConv1'][0]
         self.gnnConv2 = param_dict['gnnConv2'][0]
-        self.global_pooling = param_dict['global_pooling']
-        self.edge_attr_size = self.dataset.num_edge_features
-        if self.edge_attr_size == 0:
-            self.edge_attr_size = 1
-
+        self.global_pooling = param_dict['pooling']
         self.activation1 = param_dict['activation1']
         self.activation2 = param_dict['activation2']
         self.dropout1 = param_dict['dropout1']
@@ -41,28 +38,28 @@ class GNN_Model(MessagePassing):
         self.normalize2 = param_dict['normalize2']
 
         if param_dict['gnnConv1'][1] == "linear":
-            self.conv1 = self.gnnConv1(self.dataset.num_node_features, self.hidden_channels1)
+            self.conv1 = self.gnnConv1(self.in_feat, self.hidden_channels1)
             self.input_conv2 = self.hidden_channels1
         else:
             if 'head' in inspect.getfullargspec(self.gnnConv1)[0]:
-                self.conv1 = self.gnnConv1(self.dataset.num_node_features, self.hidden_channels1, head=self.head1,
+                self.conv1 = self.gnnConv1(self.in_feat, self.hidden_channels1, head=self.head1,
                                            aggr=self.aggr1)
                 self.input_conv2 = self.hidden_channels1 * self.head1
             elif 'heads' in inspect.getfullargspec(self.gnnConv1)[0]:
-                self.conv1 = self.gnnConv1(self.dataset.num_node_features, self.hidden_channels1, heads=self.head1,
+                self.conv1 = self.gnnConv1(self.in_feat, self.hidden_channels1, heads=self.head1,
                                            aggr=self.aggr1)
                 self.input_conv2 = self.hidden_channels1 * self.head1
             elif 'num_heads' in inspect.getfullargspec(self.gnnConv1)[0]:
-                self.conv1 = self.gnnConv1(self.dataset.num_node_features, self.hidden_channels1, num_heads=self.head1,
+                self.conv1 = self.gnnConv1(self.in_feat, self.hidden_channels1, num_heads=self.head1,
                                            aggr=self.aggr1)
                 self.input_conv2 = self.hidden_channels1 * self.head1
 
             else:
                 if param_dict['gnnConv1'][1] == "SGConv":  # splineconv does not support multihead
-                    self.conv1 = self.gnnConv1(self.dataset.num_node_features, self.hidden_channels1, K=2,
+                    self.conv1 = self.gnnConv1(self.in_feat, self.hidden_channels1, K=2,
                                                aggr=self.aggr1)
                 else:
-                    self.conv1 = self.gnnConv1(self.dataset.num_node_features, self.hidden_channels1)
+                    self.conv1 = self.gnnConv1(self.in_feat, self.hidden_channels1)
 
                 self.input_conv2 = self.hidden_channels1
 
@@ -96,7 +93,7 @@ class GNN_Model(MessagePassing):
         # self.graphnorm = GraphNorm(self.output_conv2)
 
         self.mlp = Sequential(Linear(self.output_conv2, 128), ReLU(),
-                              Linear(128, self.dataset.num_classes))
+                              Linear(128, self.num_class))
 
     def get_forward_conv(self, num_layer, conv, x, edge_index, edge_attr):
 
@@ -142,21 +139,20 @@ class GNN_Model(MessagePassing):
         #  Apply a final classifier
         x = self.mlp(x)
 
-        x = F.log_softmax(x, dim=1)
-
+        x = F.log_softmax(x, dim=-1)
         return x
 
 
-def train_function(model, train_loader, criterion, optimizer):
+def train_function(model, data, criterion, optimizer):
     model.train()
     loss_all = 0
-    for data in train_loader:
-        data = data.to(device)
+    for batch in data:
+        batch = batch.to(device)
         optimizer.zero_grad()
-        output = model(data)
-        loss = F.nll_loss(output, data.y)
+        output = model(batch)
+        loss = criterion(output, batch.y)
         loss.backward()
-        loss_all += data.num_graphs * loss.item()
+        loss_all += batch.num_graphs * loss.item()
         optimizer.step()
     return loss_all / int(config["dataset"]["len_traindata"])
 
@@ -170,8 +166,8 @@ def test_function(model, test_loader,type_data="val"):
     for data in test_loader:  # Iterate in batches over the training/test dataset.
         data = data.to(device)
         pred = model(data).max(dim=1)[1]
-        true_labels.extend(data.y.numpy())
-        pred_labels.extend(pred.detach().numpy())
+        true_labels.extend(data.y.detach().cpu().numpy())
+        pred_labels.extend(pred.detach().cpu().numpy())
     performance_scores = evaluate_model(true_labels, pred_labels,type_data)
 
     return performance_scores

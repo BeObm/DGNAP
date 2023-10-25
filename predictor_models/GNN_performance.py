@@ -31,7 +31,7 @@ from torch_geometric.nn.norm import GraphNorm
 from sklearn.linear_model import SGDRegressor, LassoCV
 from torch.nn import Linear
 import torch.nn.functional as F
-from torch_geometric.nn import GCNConv, GraphConv, SAGEConv, GATConv, LEConv, GENConv, GeneralConv, TransformerConv
+from torch_geometric.nn import GCNConv, GraphSAGE, SAGEConv, GATConv, LEConv, GENConv, GeneralConv, TransformerConv
 from torch_geometric.nn.norm import GraphNorm, InstanceNorm, BatchNorm
 
 from settings.config_file import *
@@ -42,9 +42,9 @@ class Predictor(MessagePassing):
         super(Predictor, self).__init__()
         #         self.embed_edges = Linear(self.edge_attr_size, self.hidden_channels)
         # print("in channels dim =",in_channels)
-        self.conv1 = GraphConv(in_channels, dim, aggr="add")
+        self.conv1 = GraphSAGE(in_channels, dim, aggr="add")
 
-        self.conv2 = GraphConv(dim, dim, aggr="add")
+        self.conv2 = GraphSAGE(dim, dim, aggr="add")
         self.drop_out = drop_out
         # self.normalize = InstanceNorm(dim)
         self.graphnorm = GraphNorm(dim)
