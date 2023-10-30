@@ -23,9 +23,6 @@ import argparse
 if __name__ == "__main__":
     set_seed()
 
-
-
-
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset", help="Dataset name", default="ENZYMES")
     parser.add_argument("--type_task", help="type_task name", default="graph_classification", choices=["graph_anomaly", "graph_classification", "graph_regression","node_classification"])

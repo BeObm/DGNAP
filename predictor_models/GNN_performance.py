@@ -42,9 +42,9 @@ class Predictor(MessagePassing):
         super(Predictor, self).__init__()
         #         self.embed_edges = Linear(self.edge_attr_size, self.hidden_channels)
         # print("in channels dim =",in_channels)
-        self.conv1 = GraphSAGE(in_channels, dim, aggr="add")
+        self.conv1 = GraphSAGE(in_channels,128,4, dim,)
 
-        self.conv2 = GraphSAGE(dim, dim, aggr="add")
+        self.conv2 = GraphSAGE(dim,128,3, dim)
         self.drop_out = drop_out
         # self.normalize = InstanceNorm(dim)
         self.graphnorm = GraphNorm(dim)
