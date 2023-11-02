@@ -143,11 +143,11 @@ class GNN_Model(MessagePassing):
         return x
 
 
-def train_function(model, data, criterion, optimizer):
+def train_function(model, data, criterion, optimizer,devise=device):
     model.train()
     loss_all = 0
     for batch in data:
-        batch = batch.to(device)
+        batch = batch.to(devise)
         optimizer.zero_grad()
         output = model(batch)
         loss = criterion(output, batch.y)
@@ -158,13 +158,13 @@ def train_function(model, data, criterion, optimizer):
 
 
 @torch.no_grad()
-def test_function(model, test_loader,type_data="val"):
+def test_function(model, test_loader,type_data="val",devise=device):
     model.eval()
     true_labels = []
     pred_labels = []
 
     for data in test_loader:  # Iterate in batches over the training/test dataset.
-        data = data.to(device)
+        data = data.to(devise)
         pred = model(data).max(dim=1)[1]
         true_labels.extend(data.y.detach().cpu().numpy())
         pred_labels.extend(pred.detach().cpu().numpy())

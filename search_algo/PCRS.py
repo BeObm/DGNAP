@@ -15,6 +15,7 @@ from load_data.load_data import load_dataset
 from search_space_manager.search_space import *
 # from search_space_manager.map_functions import *
 import torch.nn as nn
+from search_algo.DDP import *
 from GNN_models.node_classification import *
 from GNN_models.graph_classification import *
 from settings.config_file import *
@@ -58,8 +59,6 @@ def get_performance_distributions(e_search_space,
         for key, value in submodel.items():
             submodel_config[key] = value[0]
         sys.stdout.write(f"Sample {no + 1}/{len(model_list)}: {[submodel[opt][0] for opt in submodel.keys()]} ")
-
-
 
         model_performance = run_model(submodel_config=submodel_config,
                                       train_data=train_loader,
@@ -289,19 +288,17 @@ def run_model(submodel_config, train_data, test_data, in_chanels, num_class, epo
     params_config = get_option_maps(submodel_config)
     params_config["in_channels"] = in_chanels
     params_config["num_class"] = num_class
-    model = GNN_Model(params_config)
+    new_model = GNN_Model(params_config)
     if metric_rule == 'max':
         best_performance = -99999999
     else:
         best_performance = 99999999
     if shared_weight != None:
         try:
-            model.load_state_dict(shared_weight)
+            new_model.load_state_dict(shared_weight)
         except:
             pass
-
-    model.to(device)
-    optimizer = params_config["optimizer"](model.parameters(),
+    optimizer = params_config["optimizer"](new_model.parameters(),
                                            lr=params_config['lr'],
                                            weight_decay=params_config['weight_decay'])
     criterion = params_config["criterion"]
@@ -309,11 +306,15 @@ def run_model(submodel_config, train_data, test_data, in_chanels, num_class, epo
     test_performance_record = defaultdict(list)
     c = 0
     for i in range(numround):
-        for epoch in range(epochs):
-            train_model(model=model,
-                        data=train_data,
-                        criterion=criterion,
-                        optimizer=optimizer)
+
+            model =ddp_module(
+                               total_epochs=epochs,
+                               model_to_train=new_model,
+                               optimizer=optimizer,
+                               train_data=train_data,
+                               criterion=criterion,
+                               model_trainer=train_model)
+
             performance_score = test_model(model, test_data, type_data)
             performance_record.append(performance_score[search_metric])
 

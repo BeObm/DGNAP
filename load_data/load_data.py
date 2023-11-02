@@ -9,6 +9,7 @@ from torch_geometric.data import Data
 from load_data.graph_anomaly import *
 import torch_geometric.transforms as T
 from torch_geometric.loader import DataLoader
+from torch.utils.data.distributed import DistributedSampler
 from torch_geometric.datasets import TUDataset, PPI, Planetoid, Coauthor, Amazon, Flickr, FacebookPagePage
 from settings.config_file import *
 from scipy.io import loadmat
@@ -149,9 +150,22 @@ def load_dataset(dataset, batch_dim=Batch_Size):
             val_dataset = dataset[n:2 * n]
             train_dataset = dataset[2 * n:]
 
-        train_loader = DataLoader(train_dataset, batch_size=batch_dim, shuffle=True)
-        val_loader = DataLoader(val_dataset, batch_size=batch_dim, shuffle=False)
-        test_loader = DataLoader(test_dataset, batch_size=batch_dim, shuffle=False)
+        train_loader = DataLoader(train_dataset,
+                                  batch_size=batch_dim,
+                                  shuffle=True,
+                                  pin_memory=True,
+                                  sampler=DistributedSampler(train_dataset))
+        val_loader = DataLoader(val_dataset,
+                                batch_size=batch_dim,
+                                shuffle=False,
+                                pin_memory=True,
+                                sampler=DistributedSampler(val_dataset))
+        test_loader = DataLoader(test_dataset,
+                                 batch_size=batch_dim,
+                                 shuffle=False,
+                                 pin_memory=True,
+                                 sampler=DistributedSampler(test_dataset))
+
         add_config("dataset", "len_traindata", len(train_dataset))
         add_config("dataset", "len_testdata", len(test_dataset))
         add_config("dataset", "len_valdata", len(val_loader))

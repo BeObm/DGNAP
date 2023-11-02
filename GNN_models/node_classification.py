@@ -133,9 +133,9 @@ class GNN_Model(MessagePassing):
 
 
 
-def train_function(model, data, criterion, optimizer):
+def train_function(model, data, criterion, optimizer, devise=device):
     model.train()
-    data = data.to(device)
+    data = data.to(devise)
     train_mask = data.train_mask.bool()
     optimizer.zero_grad()
     out = model(data)
@@ -146,10 +146,10 @@ def train_function(model, data, criterion, optimizer):
 
 
 @torch.no_grad()
-def test_function(model, data, type_data="val"):
+def test_function(model, data, type_data="val", devise=device):
     performance_scores = {}
     model.eval()
-    data = data.to(device)
+    data = data.to(devise)
     out = model(data)
     if type_data == 'val':
         mask = data.val_mask.bool()
