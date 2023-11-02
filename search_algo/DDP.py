@@ -80,9 +80,6 @@ class Trainer:
                                     optimizer=self.optimizer)
 
 
-
-
-
     def _save_snapshot(self, epoch):
         snapshot = {
             "MODEL_STATE": self.model.module.state_dict(),

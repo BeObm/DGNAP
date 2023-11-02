@@ -20,6 +20,7 @@ from GNN_models.graph_classification import *
 from settings.config_file import *
 from collections import OrderedDict
 import importlib
+from search_algo.DDP import *
 from tqdm.auto import tqdm
 
 set_seed()
@@ -57,6 +58,8 @@ def get_performance_distributions(e_search_space,
         for key, value in submodel.items():
             submodel_config[key] = value[0]
         sys.stdout.write(f"Sample {no + 1}/{len(model_list)}: {[submodel[opt][0] for opt in submodel.keys()]} ")
+
+
 
         model_performance = run_model(submodel_config=submodel_config,
                                       train_data=train_loader,

@@ -134,7 +134,6 @@ def create_spectral_gnap_gl_space():  # a<b
     edge_dict["optimizer"] = []
     return e_search_space, option_decoder, edge_dict
 
-
 def create_spatial_gnap_gl_space():
     attention = ["GCNConv", "GENConv", "SGConv", "linear", "GraphConv", "GATConv"]
     agregation = ['add', "max", "mean"]

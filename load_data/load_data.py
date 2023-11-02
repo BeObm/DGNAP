@@ -61,7 +61,7 @@ class ShuffleDataset(torch.utils.data.IterableDataset):
             pass
 
 
-def get_dataset(type_task, dataset_root, dataset_name, normalize_features=True, transform=None):
+def get_dataset(type_task, dataset_root, dataset_name, normalize_features=True, transform=False):
     set_seed()
     support_dataset_list = {"node_classification": ["Cora", "Citeseer", "Pubmed"],
                             "graph_classification": ["DD", "PROTEINS", "ENZYMES", "BZR", "COLLAB", "IMDB-BINARY"],
@@ -70,13 +70,19 @@ def get_dataset(type_task, dataset_root, dataset_name, normalize_features=True, 
     if dataset_name in support_dataset_list[type_task]:
 
         if dataset_name in ["Cora", "Citeseer", "Pubmed"]:
-            dataset = Planetoid(root=dataset_root, name=dataset_name)  #
-            if transform is not None and normalize_features:
-                dataset.transform = T.Compose([T.NormalizeFeatures(), transform])
-            elif normalize_features == True:
-                dataset.transform = T.NormalizeFeatures()
-            elif transform is not None:
-                dataset.transform = transform
+            dataset = Planetoid(root=dataset_root, name=dataset_name,
+                                transform=T.Compose([T.NormalizeFeatures(), T.GCNNorm(), T.RandomNodeSplit()]))  #
+            if transform ==True and normalize_features==True:
+                dataset = Planetoid(root=dataset_root, name=dataset_name,
+                                    transform=T.Compose([T.NormalizeFeatures(), T.GCNNorm(), T.RandomNodeSplit()]))
+            elif normalize_features == True and transform==False:
+                dataset = Planetoid(root=dataset_root, name=dataset_name,
+                                    transform=T.Compose([T.NormalizeFeatures()]))
+            elif normalize_features == False and transform==True:
+                dataset = Planetoid(root=dataset_root, name=dataset_name,
+                                    transform=T.Compose([T.GCNNorm(), T.RandomNodeSplit()]))
+            else:
+                dataset = Planetoid(root=dataset_root, name=dataset_name)
 
         elif dataset_name in ["DD", "PROTEINS", "ENZYMES", "BZR", "COLLAB", "IMDB-BINARY"]:
             dataset = TUDataset(root=dataset_root, name=dataset_name)  # ,use_node_attr=True,use_edge_attr=True
@@ -187,9 +193,9 @@ def Load_nc_data(data, shuffle=True):
     set_seed()
     if shuffle:
         indices = torch.randperm(data.x.size(0))
-        data.train_mask = index_to_mask(indices[1500:3500], size=data.num_nodes)
-        data.val_mask = index_to_mask(indices[1000:1500], size=data.num_nodes)
-        data.test_mask = index_to_mask(indices[:1000], size=data.num_nodes)
+        data.train_mask = index_to_mask(indices[1000:], size=data.num_nodes)
+        data.val_mask = index_to_mask(indices[500:1000], size=data.num_nodes)
+        data.test_mask = index_to_mask(indices[:500], size=data.num_nodes)
     else:
         # data.train_mask = torch.zeros(data.num_nodes, dtype=torch.uint8)
         # data.train_mask[:1000] = 1
