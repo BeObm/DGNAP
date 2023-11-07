@@ -26,7 +26,6 @@ from tqdm.auto import tqdm
 
 set_seed()
 
-
 def get_performance_distributions(e_search_space,
                                   dataset,
                                   predictor_graph_edge_index):  # get performance distribution of s*n models (n = search space size)
@@ -341,11 +340,11 @@ def run_model(submodel_config, train_data, test_data, in_chanels, num_class, epo
                     f"{'++' * 10} {metric_rule} is an invalid rule. Metric rule should be 'min' or 'max'")
                 sys.exit()
 
-        performance_score = test_model(best_model, test_data, type_data)
-        performance_record.append(performance_score[search_metric])
-        if type_data == "test":
-            for metric, value in performance_score.items():
-                test_performance_record[metric].append(performance_score[metric])
+            performance_score = test_model(best_model, test_data, type_data)
+            performance_record.append(performance_score[search_metric])
+            if type_data == "test":
+                for metric, value in performance_score.items():
+                    test_performance_record[metric].append(performance_score[metric])
 
     model_performance = stat.mean(performance_record)
     test_results = {}
@@ -356,3 +355,4 @@ def run_model(submodel_config, train_data, test_data, in_chanels, num_class, epo
         return test_results
     else:
         return model_performance
+

@@ -2,27 +2,17 @@
 
 import os
 # os.environ['CUDA_LAUNCH_BLOCKING'] = "1"
-import torch
-
-from  search_space_manager.search_space import *
-from search_space_manager.sample_models import *
-from search_algo.PCRS import *
-from search_space_manager.sample_models import *
 from search_algo.get_prediction import *
 from search_algo.write_results import *
 from search_algo.stand_alone import *
 from load_data.load_data import *
 from search_algo.utils import manage_budget,Generate_time_cost,create_paths
-from datetime import date
-import random
 import time
 from settings.config_file import *
 import argparse
 
-
 if __name__ == "__main__":
     set_seed()
-
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset", help="Dataset name", default="ENZYMES")
     parser.add_argument("--type_task", help="type_task name", default="graph_classification", choices=["graph_anomaly", "graph_classification", "graph_regression","node_classification"])
@@ -40,11 +30,7 @@ if __name__ == "__main__":
     add_config("dataset", "type_task", args.type_task)
     create_paths()
     torch.cuda.empty_cache()
-    
-
     timestart = time.time()
-
-
     # torch.cuda.empty_cache()
     type_task = args.type_task
     dataset_name = args.dataset

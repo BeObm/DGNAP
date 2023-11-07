@@ -134,69 +134,48 @@ def create_spectral_gnap_gl_space():  # a<b
     edge_dict["optimizer"] = []
     return e_search_space, option_decoder, edge_dict
 
+
 def create_spatial_gnap_gl_space():
     attention = ["GCNConv", "GENConv", "SGConv", "linear", "GraphConv", "GATConv"]
     agregation = ['add', "max", "mean"]
     activation = ["Relu", "Elu", "linear", "Softplus", "sigmoid", "tanh", "relu6"]
     multi_head = [1]
     hidden_channels = [16, 64, 128]
-    normalizer = [False,"GraphNorm", "InstanceNorm"]
+    normalizer = [False, "GraphNorm", "InstanceNorm"]
     dropout = [0.0, 0.3, 0.5, 0, 7]
     sp = {'gnnConv1': attention, 'gnnConv2': attention, 'aggregation1': agregation, 'aggregation2': agregation,
           'normalize1': normalizer, 'normalize2': normalizer, 'activation1': activation, 'activation2': activation,
           'multi_head1': multi_head, 'multi_head2': multi_head, 'hidden_channels1': hidden_channels,
           'hidden_channels2': hidden_channels, 'dropout1': dropout, 'dropout2': dropout,
           'lr': [0.01, 0.001, 0.005, 0.0005], 'weight_decay': [0, 0.001, 0.0005], "optimizer": ["adam", "sgd"],
-          'criterion': ["fn_loss","CrossEntropyLoss"], 'pooling': ["global_add_pool", "global_max_pool", "global_mean_pool"]}
+          'criterion': ["fn_loss", "CrossEntropyLoss"],
+          'pooling': ["global_add_pool", "global_max_pool", "global_mean_pool"]}
     e_search_space, option_decoder = search_space_embeddings(sp)
 
-    edge_dict = {}
-    edge_dict['gnnConv1'] = ["normalize1", 'dropout1', 'activation1']
-    edge_dict['aggregation1'] = ["gnnConv1"]
-    edge_dict['multi_head1'] = ["gnnConv1"]
-    edge_dict['hidden_channels1'] = ["gnnConv1"]
-    edge_dict['normalize1'] = ["dropout1", 'activation1']
-    edge_dict['dropout1'] = ["activation1"]
-    edge_dict['activation1'] = ["gnnConv2"]
-
-    edge_dict['gnnConv2'] = ["normalize2", 'dropout2', 'activation2']
-    edge_dict['aggregation2'] = ["gnnConv2"]
-    edge_dict['multi_head2'] = ["gnnConv2"]
-    edge_dict['hidden_channels2'] = ["gnnConv2"]
-    edge_dict['normalize2'] = ["dropout2", 'activation2']
-    edge_dict['dropout2'] = ["activation2"]
-
-    edge_dict['mlp_layer'] = ["graph_filter"]
-    edge_dict['hidden_channels'] = ["mlp_layer", "graph_filter"]
-    edge_dict['activation'] = ["mlp_layer"]
-    edge_dict['graph_filter'] = ["attention"]
-    edge_dict['num_graph_filters'] = ["attention"]
-    edge_dict['num_signals'] = ["graph_filter"]
-    edge_dict['aggregation'] = ["graph_filter"]
-    edge_dict['normalization'] = ["graph_filter"]
-    edge_dict['lr_f'] = ["graph_filter"]
-    edge_dict['attention'] = ["criterion", "dropout"]
-    edge_dict['lr'] = ["criterion"]
-    edge_dict['weight_decay'] = ["criterion"]
-    edge_dict['dropout'] = ["mlp_layer"]
-    edge_dict['activation2'] = ["pooling"]
-    edge_dict['pooling'] = ['criterion']
-    edge_dict['lr'] = ["criterion", "weight_decay"]
-    edge_dict['weight_decay'] = ["criterion", "lr"]
-    edge_dict["criterion"] = ["optimizer"]
-    edge_dict["optimizer"] = []
+    edge_dict = {'gnnConv1': ["normalize1", 'dropout1', 'activation1'], 'aggregation1': ["gnnConv1"],
+                 'multi_head1': ["gnnConv1"], 'hidden_channels1': ["gnnConv1"],
+                 'normalize1': ["dropout1", 'activation1'], 'dropout1': ["activation1"], 'activation1': ["gnnConv2"],
+                 'gnnConv2': ["normalize2", 'dropout2', 'activation2'], 'aggregation2': ["gnnConv2"],
+                 'multi_head2': ["gnnConv2"], 'hidden_channels2': ["gnnConv2"],
+                 'normalize2': ["dropout2", 'activation2'], 'dropout2': ["activation2"], 'mlp_layer': ["graph_filter"],
+                 'hidden_channels': ["mlp_layer", "graph_filter"], 'activation': ["mlp_layer"],
+                 'graph_filter': ["attention"], 'num_graph_filters': ["attention"], 'num_signals': ["graph_filter"],
+                 'aggregation': ["graph_filter"], 'normalization': ["graph_filter"], 'lr_f': ["graph_filter"],
+                 'attention': ["criterion", "dropout"], 'lr': ["criterion", "weight_decay"],
+                 'weight_decay': ["criterion", "lr"], 'dropout': ["mlp_layer"], 'activation2': ["pooling"],
+                 'pooling': ['criterion'], "criterion": ["optimizer"], "optimizer": []}
 
     return e_search_space, option_decoder, edge_dict
 
 
 def create_spatial_gnap_nl_space():  # a<b
-    attention = ["GCNConv", "GENConv", "SGConv", "linear", "GraphConv","GATConv"]
+    attention = ["GCNConv", "GENConv", "SGConv", "linear", "GraphConv", "GATConv"]
     agregation = ['add', "max", "mean"]
-    activation = ["Relu", "Elu", "linear", "Softplus", "sigmoid","tanh","relu6"]
+    activation = ["Relu", "Elu", "linear", "Softplus", "sigmoid", "tanh", "relu6"]
     multi_head = [1]
-    hidden_channels = [16,64, 128]
+    hidden_channels = [16, 64, 128]
     normalizer = ["GraphNorm", "InstanceNorm"]
-    dropout = [0.0, 0.3, 0.5, 0,7]
+    dropout = [0.0, 0.3, 0.5, 0, 7]
     sp = {'gnnConv1': attention, 'gnnConv2': attention, 'aggregation1': agregation, 'aggregation2': agregation,
           'normalize1': normalizer, 'normalize2': normalizer, 'activation1': activation, 'activation2': activation,
           'multi_head1': multi_head, 'multi_head2': multi_head, 'hidden_channels1': hidden_channels,

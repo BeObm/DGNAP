@@ -8,7 +8,11 @@ from torch import cat
 from torch_geometric.data import Data
 from load_data.graph_anomaly import *
 import torch_geometric.transforms as T
-from torch_geometric.loader import DataLoader
+# from torch_geometric.loader import DataLoader
+from torch.utils.data import  DataLoader
+from torch.utils.data import Dataset
+
+import torch.distributed as dist
 from torch.utils.data.distributed import DistributedSampler
 from torch_geometric.datasets import TUDataset, PPI, Planetoid, Coauthor, Amazon, Flickr, FacebookPagePage
 from settings.config_file import *
@@ -150,27 +154,51 @@ def load_dataset(dataset, batch_dim=Batch_Size):
             val_dataset = dataset[n:2 * n]
             train_dataset = dataset[2 * n:]
 
-        train_loader = DataLoader(train_dataset,
-                                  batch_size=batch_dim,
-                                  shuffle=True,
-                                  pin_memory=True,
-                                  sampler=DistributedSampler(train_dataset))
-        val_loader = DataLoader(val_dataset,
-                                batch_size=batch_dim,
-                                shuffle=False,
-                                pin_memory=True,
-                                sampler=DistributedSampler(val_dataset))
-        test_loader = DataLoader(test_dataset,
-                                 batch_size=batch_dim,
-                                 shuffle=False,
-                                 pin_memory=True,
-                                 sampler=DistributedSampler(test_dataset))
+        # train_sampler = torch.utils.data.distributed.DistributedSampler(
+        #     train_dataset, num_replicas=dist.get_world_size(), rank=dist.get_rank())
+        #
+        # val_sampler = torch.utils.data.distributed.DistributedSampler(
+        #     val_dataset, num_replicas=dist.get_world_size(), rank=dist.get_rank())
+        #
+        # test_sampler = torch.utils.data.distributed.DistributedSampler(
+        #     test_dataset, num_replicas=dist.get_world_size(), rank=dist.get_rank())
+
+
+
+        train_loader = prepare_dataloader(train_dataset,batch_dim)
+        val_loader = prepare_dataloader(val_dataset,batch_dim)
+        test_loader = prepare_dataloader(tratest_datasetin_dataset,batch_dim)
+
+
+        # test_loader = DataLoader(test_dataset,
+        #                          batch_size=batch_dim,
+        #                          shuffle=False,
+        #                          pin_memory=True,
+        #                          sampler=DistributedSampler(test_dataset),
+        #                          num_workers=0)
 
         add_config("dataset", "len_traindata", len(train_dataset))
         add_config("dataset", "len_testdata", len(test_dataset))
         add_config("dataset", "len_valdata", len(val_loader))
 
     return train_loader, val_loader, test_loader, in_channels, num_class
+
+
+
+
+def prepare_dataloader(dataset: Dataset, batch_size: int):
+    return DataLoader(
+        dataset,
+        batch_size=batch_size,
+        pin_memory=True,
+        shuffle=False,
+        sampler=DistributedSampler(dataset)
+    )
+
+
+
+
+
 
 
 def shuffle_dataset(dataset):

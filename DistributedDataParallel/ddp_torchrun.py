@@ -126,4 +126,4 @@ if __name__ == "__main__":
     args = parser.parse_args()
     start =time()
     main(args.save_every, args.total_epochs, args.batch_size)
-    print(f'Code run in {round(time()-start,2)}secondes = {round((time()-start)/60,2)} minutes')
+    print(f'Code run in {round(time()-start,2)} secondes = {round((time()-start)/60,2)} minutes')

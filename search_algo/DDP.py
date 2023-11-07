@@ -33,9 +33,7 @@ class Trainer:
         self.optimizer = optimizer
         self.criterion=criterion
         self.train_model=train_model
-        if os.path.exists(snapshot_path):
-            print("Loading snapshot")
-            self._load_snapshot(snapshot_path)
+
 
         self.model = DDP(self.model, device_ids=[self.gpu_id],find_unused_parameters=True)
         pytorch_total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
