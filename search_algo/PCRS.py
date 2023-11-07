@@ -1,25 +1,14 @@
 # -*- coding: utf-8 -*-
 
 import sys
-import time
-import pandas as pd
 import statistics as stat
-import numpy as np
 from copy import deepcopy
-from collections import defaultdict
-from search_algo.utils import *
 from predictor_models.utils import *
 from torch_geometric.data import Data
 from search_space_manager.sample_models import *
 from load_data.load_data import load_dataset
-from search_space_manager.search_space import *
-# from search_space_manager.map_functions import *
-import torch.nn as nn
-from search_algo.DDP import *
-from GNN_models.node_classification import *
 from GNN_models.graph_classification import *
 from settings.config_file import *
-from collections import OrderedDict
 import importlib
 from search_algo.DDP import *
 from tqdm.auto import tqdm
@@ -48,10 +37,9 @@ def get_performance_distributions(e_search_space,
     predictor_dataset = defaultdict(list)
     graph_list = []
 
-    train_loader, val_loader, test_loader, in_channels, num_class = load_dataset(dataset)
-    # train_loader = train_loader.to(device)
-    # val_loader = val_loader.to(device)
-    for no, submodel in enumerate(model_list):
+    train_dataset, val_dataset, test_dataset, in_channels, num_class = load_dataset(dataset)
+
+    for no, submodel in tqdm(enumerate(model_list)):
 
         submodel_config = {}
         # extract the model config choices
@@ -60,8 +48,8 @@ def get_performance_distributions(e_search_space,
         sys.stdout.write(f"Sample {no + 1}/{len(model_list)}: {[submodel[opt][0] for opt in submodel.keys()]} ")
 
         model_performance = run_model(submodel_config=submodel_config,
-                                      train_data=train_loader,
-                                      test_data=val_loader,
+                                      train_data=train_dataset,
+                                      test_data=val_dataset,
                                       in_chanels=in_channels,
                                       num_class=num_class,
                                       epochs=epochs,
@@ -191,13 +179,12 @@ def get_best_model(topk_list, option_decoder, dataset):
                     elif config["param"]["encoding_method"] == "embedding":
                         dict_model[function] = option_decoder[row[function]]
 
-        train_loader, val_loader, test_loader, in_channels, num_class = load_dataset(dataset)
-        # train_loader = train_loader.to(device)
-        # val_loader = val_loader.to(device)
+        train_dataset, val_dataset, test_dataset, in_channels, num_class = load_dataset(dataset)
+
         sys.stdout.write(f"Architecture {num_model}/{len(topk_list)}:{[dict_model[opt] for opt in dict_model.keys()]} ")
         model_performance = run_model(submodel_config=dict_model,
-                                      train_data=train_loader,
-                                      test_data=val_loader,
+                                      train_data=train_dataset,
+                                      test_data=val_dataset,
                                       in_chanels=in_channels,
                                       num_class=num_class,
                                       epochs=epochs,
@@ -278,20 +265,16 @@ def get_option_maps(submodel):
     return model_config
 
 
-def run_model(submodel_config, train_data, test_data, in_chanels, num_class, epochs, numround, shared_weight=None,
+def run_model(submodel_config, train_data, test_data, in_chanels, num_class, epochs, numround=1, shared_weight=None,
               type_data="val"):
     set_seed()
     search_metric = config["param"]["search_metric"]
-    metric_rule = config["param"]["best_search_metric_rule"]
     GNN_Model, train_model, test_model = get_train(config["dataset"]["type_task"])
     params_config = get_option_maps(submodel_config)
     params_config["in_channels"] = in_chanels
     params_config["num_class"] = num_class
     new_model = GNN_Model(params_config)
-    if metric_rule == 'max':
-        best_performance = -99999999
-    else:
-        best_performance = 99999999
+
     if shared_weight != None:
         try:
             new_model.load_state_dict(shared_weight)
@@ -317,31 +300,6 @@ def run_model(submodel_config, train_data, test_data, in_chanels, num_class, epo
             performance_score = test_model(model, test_data, type_data)
             performance_record.append(performance_score[search_metric])
 
-            model_performance = stat.mean(performance_record)
-
-            if metric_rule == "max":
-                if model_performance > best_performance:
-                    best_performance = model_performance
-                    best_model = copy.deepcopy(model)
-                else:
-                    c += 1
-                    if c == int(config["param"]['patience']):
-                        break
-            elif metric_rule == "min":
-                if model_performance < best_performance:
-                    best_performance = model_performance
-                    best_model = copy.deepcopy(model)
-                else:
-                    c += 1
-                    if c == int(config["param"]['patience']):
-                        break
-            else:
-                print(
-                    f"{'++' * 10} {metric_rule} is an invalid rule. Metric rule should be 'min' or 'max'")
-                sys.exit()
-
-            performance_score = test_model(best_model, test_data, type_data)
-            performance_record.append(performance_score[search_metric])
             if type_data == "test":
                 for metric, value in performance_score.items():
                     test_performance_record[metric].append(performance_score[metric])

@@ -45,7 +45,7 @@ def create_config_file(type_task,dataset_name):
         "dataset_name": dataset_name,  # Citeseer,
         'type_task': type_task,  # it could be "graph classification", "link prediction",node classification
         "dataset_root": f"{project_root_dir}/data/{type_task}",
-        "shufle_dataset":False
+        "shufle_dataset":True
     }
 
     # fill other configuration information
