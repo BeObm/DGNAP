@@ -69,10 +69,8 @@ def create_config_file(type_task,dataset_name):
         'best_search_metric_rule':"max", # max
         "encoding_method": "one_hot",  # ={one_hot, embedding,index_embedding}
         "type_sampling": "controlled_stratified_sampling",  # random_sampling, uniform_sampling, controlled_stratified_sampling
-       
         "feature_size_choice": "total_choices",  # total_functions total_choices  # for one hot encoding using graph dataset for predictor, use"total choices
         'type_input_graph': "directed",
-        "use_paralell": "no",
         "learning_type": "unsupervised",
         "predict_sample": 500000,
         "batch_sample": 10000

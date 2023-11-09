@@ -40,7 +40,7 @@ class Trainer:
         self.criterion = criterion
         self.train_model = train_model
 
-        self.model = DDP(self.model, device_ids=[self.gpu_id], find_unused_parameters=False)
+        self.model = DDP(self.model, device_ids=[self.gpu_id], find_unused_parameters=True)
         pytorch_total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
         print(f"total number of parameter={pytorch_total_params}")
 
