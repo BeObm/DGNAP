@@ -61,10 +61,10 @@ def create_config_file(type_task,dataset_name):
         "train_ratio":0.4,
         "nfcode": 56,  # number of digit for each function code when using embedding method
         "noptioncode": 8,
-        "sample_model_epochs":200,
-        "topk_model_epochs": 200,
-        "best_model_epochs": 200,
-        "patience":50,
+        "sample_model_epochs":2000,
+        "topk_model_epochs": 2000,
+        "best_model_epochs": 2000,
+        "patience":100,
         'search_metric':"roc_auc",    #matthews_corr_coef, balanced_accuracy_score, accuracy_score, roc_auc, auc_pr
         'best_search_metric_rule':"max", # max
         "encoding_method": "one_hot",  # ={one_hot, embedding,index_embedding}

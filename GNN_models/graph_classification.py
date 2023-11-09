@@ -18,8 +18,8 @@ set_seed()
 class GNN_Model(MessagePassing):
     def __init__(self, param_dict):
         super(GNN_Model, self).__init__()
-        self.in_feat=param_dict["in_channels"]
-        self.num_class =param_dict["num_class"]
+        self.in_feat = param_dict["in_channels"]
+        self.num_class = param_dict["num_class"]
         self.aggr1 = param_dict['aggregation1']
         self.aggr2 = param_dict['aggregation2']
         self.hidden_channels1 = int(param_dict['hidden_channels1'])
@@ -93,7 +93,8 @@ class GNN_Model(MessagePassing):
         # self.graphnorm = GraphNorm(self.output_conv2)
 
         self.mlp = Sequential(Linear(self.output_conv2, 128), ReLU(),
-                              Linear(128, self.num_class))
+                              Linear(128, 64), ReLU(),
+                              Linear(64, self.num_class))
 
     def get_forward_conv(self, num_layer, conv, x, edge_index, edge_attr):
 
@@ -122,20 +123,22 @@ class GNN_Model(MessagePassing):
         # x = F.dropout(x, self.dropout1, training=self.training)
 
         x = self.get_forward_conv(1, self.gnnConv1, x, edge_index, edge_attr)
+        x = self.activation1(x)
         if self.normalize1 not in [False, "False"]:
             x = self.batchnorm1(x)
-        x = self.activation1(x)
+
         # x = F.dropout(x, self.dropout2, training=self.training)
         x = self.get_forward_conv(2, self.gnnConv2, x, edge_index, edge_attr)
+        x = self.activation2(x)
         if self.normalize2 not in [False, "False"]:
             x = self.batchnorm2(x)
-        x = self.activation2(x)
+
 
         # 2. Readout layer
 
         x = self.global_pooling(x, batch)  # [batch_size, self.hidden_channels]
         x = F.relu(x)
-        x = F.dropout(x, p=0.5, training=self.training)
+        x = F.dropout(x, p=self.dropout2, training=self.training)
         #  Apply a final classifier
         x = self.mlp(x)
 
