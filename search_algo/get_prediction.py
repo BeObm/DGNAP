@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+import torch
+
 from settings.config_file import *
 # from sklearn.preprocessing import OneHotEncoder
 import matplotlib.pyplot as plt
@@ -22,8 +24,8 @@ import importlib
 
 def get_prediction(performance_records_path, e_search_space,predictor_graph_edge_index):
     if (config["predictor"]["predictor_dataset_type"]) == "graph":
-        trained_predictor_model = train_predictor_using_graph_dataset(performance_records_path)
-        TopK_final = predict_and_rank(trained_predictor_model, e_search_space,predictor_graph_edge_index)
+        feature_size=train_predictor_using_graph_dataset(performance_records_path)
+        TopK_final = predict_and_rank(e_search_space,predictor_graph_edge_index,feature_size)
     elif (config["predictor"]["predictor_dataset_type"]) == "table":
         TopK_final = get_prediction_from_table(performance_records_path, e_search_space)
     return TopK_final
@@ -35,6 +37,12 @@ def get_PredictorModel(predictor_model):
     train_predictor = getattr(task_model_obj, "train_predictor")
     test_predictor = getattr(task_model_obj, "test_predictor")
     return PredictorModel, train_predictor, test_predictor
+
+
+def load_predictor_model():
+
+
+
 
 
 def train_predictor_using_graph_dataset(predictor_dataset_folder):
@@ -76,17 +84,19 @@ def train_predictor_using_graph_dataset(predictor_dataset_folder):
         if loss < best_loss:
             best_loss = loss
             best_predictor_model = copy.deepcopy(predictor_model)
+
         else:
             c += 1
             if c == int(config["predictor"]['patience']):
                 break
+
     add_config("predictor", "best_loss", round(best_loss,6))
     metrics_list = map_predictor_metrics()
     predictor_performance = test_predictor(model=best_predictor_model,
                                            test_loader=train_loader,
                                            metrics_list=metrics_list,
                                            title="Predictor training test")
-
+    torch.save(best_predictor_model.state_dict(),f"{config['path']['result_folder']}/'predictor_model_weight.pt'")
     for metric, value in predictor_performance.items():
         add_config("results", f"{metric}_train", value)
         print(f"{metric}_train: {value}")
@@ -101,16 +111,31 @@ def train_predictor_using_graph_dataset(predictor_dataset_folder):
         add_config("results", f"{metric}_val", value)
         print(f"{metric}_test: {value}")
 
-    return best_predictor_model
+    return feature_size
 
-
-def predict_and_rank(predictor_model,e_search_space,predictor_graph_edge_index):
+def predict_and_rank(e_search_space,predictor_graph_edge_index,feature_size):
     set_seed()
     k = int(config["param"]["k"])
     predict_sample = int(config["param"]["predict_sample"])
     search_metric = config["param"]["search_metric"]
     metric_rule = config["param"]["best_search_metric_rule"]
     set_seed()
+
+    # Load predictor model weight
+    try:
+        dim = int(config["predictor"]["dim"])
+        drop_out = float(config["predictor"]["drop_out"])
+        model, train_predictor, test_predictor = get_PredictorModel(config["predictor"]["Predictor_model"])
+        predictor_model = model(
+            in_channels=feature_size,
+            dim=dim,
+            drop_out=drop_out,
+            out_channels=1)
+        predictor_model.load_state_dict(torch.load(f"{config['path']['result_folder']}/'predictor_model_weight.pt'")).to(device)
+        predictor_model.eval()
+    except:
+        raise ValueError("Unable to load neural predictor weights, please make sure the neural predictor weight is available and try again ")
+
 
     print(f"{'=**=' * 10}  Sampling architecture from search space {'=**=' * 10} ")
     sample_list = random_sampling(e_search_space=e_search_space, n_sample=predict_sample, predictor=True)

@@ -313,4 +313,3 @@ def run_model(submodel_config, train_data, test_data, in_chanels, num_class, epo
         return test_results
     else:
         return model_performance
-
