@@ -40,7 +40,7 @@ def get_PredictorModel(predictor_model):
 
 
 def load_predictor_model():
-
+    pass
 
 
 
@@ -96,7 +96,7 @@ def train_predictor_using_graph_dataset(predictor_dataset_folder):
                                            test_loader=train_loader,
                                            metrics_list=metrics_list,
                                            title="Predictor training test")
-    torch.save(best_predictor_model.state_dict(),f"{config['path']['result_folder']}/'predictor_model_weight.pt'")
+    torch.save(best_predictor_model,f"{config['path']['result_folder']}/'predictor_model_weight.pt'")
     for metric, value in predictor_performance.items():
         add_config("results", f"{metric}_train", value)
         print(f"{metric}_train: {value}")
@@ -131,7 +131,7 @@ def predict_and_rank(e_search_space,predictor_graph_edge_index,feature_size):
             dim=dim,
             drop_out=drop_out,
             out_channels=1)
-        predictor_model.load_state_dict(torch.load(f"{config['path']['result_folder']}/'predictor_model_weight.pt'")).to(device)
+        predictor_model = torch.load(f"{config['path']['result_folder']}/'predictor_model_weight.pt'").to(device)
         predictor_model.eval()
     except:
         raise ValueError("Unable to load neural predictor weights, please make sure the neural predictor weight is available and try again ")

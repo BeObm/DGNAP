@@ -12,7 +12,7 @@ from torch.utils.data import Dataset
 
 
 def ddp_setup():
-    init_process_group(backend="gloo")
+    init_process_group(backend="nccl")
     torch.cuda.set_device(int(os.environ["LOCAL_RANK"]))
 
 def prepare_dataloader(dataset: Dataset, batch_size: int):
@@ -57,15 +57,17 @@ class Trainer:
     def _run_epoch(self, epoch):
         # print(f"[GPU{self.gpu_id}] Epoch {epoch} | Batchsize: {Batch_Size} | Steps: {len(self.train_data)}")
         self.train_data.sampler.set_epoch(epoch)
-        self.train_model(model=self.model,
+        loss = self.train_model(model=self.model,
                          data=self.train_data,
                          criterion=self.criterion,
                          optimizer=self.optimizer,
                          devise=self.gpu_id)
 
+        print(f"Loss value at epoch {epoch + 1}: {loss}")
     def train(self, total_epochs: int):
         for epoch in range(total_epochs):
             self._run_epoch(epoch)
+
 
 
 def ddp_module(total_epochs: int, model_to_train, optimizer, train_data, criterion, model_trainer):

@@ -91,10 +91,8 @@ def train_predictor(predictor_model, train_loader, criterion, optimizer):
         output = predictor_model(data.x, data.edge_index, data.batch)
         target = get_target(data.y,output).to(device)
         loss = criterion(output, data.y,target)
-        if torch.cuda.device_count() > 1 and config["param"]["use_paralell"] == "yes":
-            loss.mean().backward()
-        else:
-            loss.backward()
+
+        loss.backward()
 
         total_loss += loss.item() * data.num_graphs
         optimizer.step()
