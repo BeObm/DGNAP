@@ -133,20 +133,23 @@ class GNN_Model(MessagePassing):
 
 
 
-def train_function(model, data, criterion, optimizer, devise=device):
+def train_function(model, train_loader, criterion, optimizer):
     model.train()
-    data = data.to(devise)
-    train_mask = data.train_mask.bool()
-    optimizer.zero_grad()
-    out = model(data)
-    train_loss = criterion(out[train_mask], data.y[train_mask])
-    train_loss.backward()
-    optimizer.step()
-    return float(train_loss)  # ,train_acc
+    loss_all = 0
+    for data in  train_loader:
+        data = data.to(devise)
+        train_mask = data.train_mask.bool()
+        optimizer.zero_grad()
+        out = model(data)
+        train_loss = criterion(out[train_mask], data.y[train_mask])
+        train_loss.backward()
+        optimizer.step()
+        loss_all += train_loss
+    return float(train_loss/len(train_loss))  # ,train_acc
 
 
 @torch.no_grad()
-def test_function(model, data, type_data="val", devise=device):
+def test_function(model, data, type_data="val"):
     performance_scores = {}
     model.eval()
     data = data.to(devise)

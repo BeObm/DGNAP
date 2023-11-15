@@ -8,12 +8,12 @@ import os.path as osp
 import os
 from datetime import datetime
 
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
 # device = torch.device('cpu')
 num_workers = 8
-num_seed = 2
+num_seed = 2345
 config = ConfigParser()
-Batch_Size = 32
+Batch_Size = 96
 
 # 
 RunCode = dates = datetime.now().strftime("%d-%m_%Hh%M")
@@ -53,17 +53,17 @@ def create_config_file(type_task,dataset_name):
         "project_dir": project_root_dir,
         'config_filename': config_filename,
         "run_code": RunCode,
-        "budget":800,
-        "k": 100,
+        "budget":80,
+        "k": 10,
         "z_sample": 1,  # Number of time  sampled models are trained before we report their performance
         "z_topk": 1,
         "z_final": 2,
         "train_ratio":0.4,
         "nfcode": 56,  # number of digit for each function code when using embedding method
         "noptioncode": 8,
-        "sample_model_epochs":2000,
-        "topk_model_epochs": 2000,
-        "best_model_epochs": 2000,
+        "sample_model_epochs":20,
+        "topk_model_epochs": 2,
+        "best_model_epochs": 200,
         "patience":100,
         'search_metric':"roc_auc",    #matthews_corr_coef, balanced_accuracy_score, accuracy_score, roc_auc, auc_pr
         'best_search_metric_rule':"max", # max
@@ -73,6 +73,7 @@ def create_config_file(type_task,dataset_name):
         'type_input_graph': "directed",
         "learning_type": "unsupervised",
         "predict_sample": 500000,
+        "search_space_strategy": 1,  # 0 for all, 1 for prob. based  reduction, 2 for gradient based reduction
         "batch_sample": 10000
     }
 

@@ -226,7 +226,12 @@ def evaluate_model(y_true, y_pred,type_data="val"):
 
     return predictor_performances
 
-
+def save_search_space_evolution(search_space, rnd):
+    file = f"{config['path']['result_folder']}/search_space_reduction_record.txt"
+    with open(file,'a') as record:
+        record.write(f"\n\n Search space after {rnd} rounds of search space reduction {'*'*5} \n")
+        for k,v in search_space.items():
+            record.write(f"{k} : {v} \n")
 def Generate_time_cost():
     dataset_construction = float(config["time"]["distribution_time"])
     predictor_training = float(config["time"]["predictor_training_time"])

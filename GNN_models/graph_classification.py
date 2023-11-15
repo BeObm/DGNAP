@@ -11,15 +11,15 @@ from torch.nn import Linear, ReLU, Sequential
 from search_algo.utils import *
 # from sklearn.metrics import accuracy_score#, precision_score, recall_score
 from settings.config_file import *
-
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 set_seed()
 
 
 class GNN_Model(MessagePassing):
     def __init__(self, param_dict):
         super(GNN_Model, self).__init__()
-        self.in_feat = param_dict["in_channels"]
-        self.num_class = param_dict["num_class"]
+        self.in_feat=param_dict["in_channels"]
+        self.num_class =param_dict["num_class"]
         self.aggr1 = param_dict['aggregation1']
         self.aggr2 = param_dict['aggregation2']
         self.hidden_channels1 = int(param_dict['hidden_channels1'])
@@ -92,8 +92,8 @@ class GNN_Model(MessagePassing):
 
         # self.graphnorm = GraphNorm(self.output_conv2)
 
-        self.mlp = Sequential(Linear(self.output_conv2, 128), ReLU(),
-                              Linear(128, 64), ReLU(),
+        self.mlp = Sequential(Linear(self.output_conv2, 256), ReLU(),
+                              Linear(256, 64), ReLU(),
                               Linear(64, self.num_class))
 
     def get_forward_conv(self, num_layer, conv, x, edge_index, edge_attr):
@@ -120,14 +120,14 @@ class GNN_Model(MessagePassing):
         if 'batch' in data.keys:
             batch = data.batch
 
-        # x = F.dropout(x, self.dropout1, training=self.training)
+        x = F.dropout(x, self.dropout1, training=self.training)
 
         x = self.get_forward_conv(1, self.gnnConv1, x, edge_index, edge_attr)
         x = self.activation1(x)
         if self.normalize1 not in [False, "False"]:
             x = self.batchnorm1(x)
 
-        # x = F.dropout(x, self.dropout2, training=self.training)
+        x = F.dropout(x, self.dropout2, training=self.training)
         x = self.get_forward_conv(2, self.gnnConv2, x, edge_index, edge_attr)
         x = self.activation2(x)
         if self.normalize2 not in [False, "False"]:
@@ -138,15 +138,15 @@ class GNN_Model(MessagePassing):
 
         x = self.global_pooling(x, batch)  # [batch_size, self.hidden_channels]
         x = F.relu(x)
-        x = F.dropout(x, p=self.dropout2, training=self.training)
+        x = F.dropout(x, p=0.2, training=self.training)
         #  Apply a final classifier
         x = self.mlp(x)
 
-        x = F.log_softmax(x, dim=-1)
+        x = F.log_softmax(x, dim=1)
         return x
 
 
-def train_function(model, data, criterion, optimizer,devise=device):
+def train_function(model, data, criterion, optimizer,devise):
     model.train()
     loss_all = 0
     for batch in data:
@@ -161,7 +161,8 @@ def train_function(model, data, criterion, optimizer,devise=device):
 
 
 @torch.no_grad()
-def test_function(model, test_loader,type_data="val",devise=device):
+def test_function(model, test_loader,devise=device,type_data="val"):
+    model= model.to(devise)
     model.eval()
     true_labels = []
     pred_labels = []

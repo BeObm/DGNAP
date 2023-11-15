@@ -30,7 +30,6 @@ import scipy.sparse as sp
 import copy as cp
 
 print(f"Torch version: {torch.__version__}")
-print(f"Device: {device}")
 print(f"Torch geometric version: {torch_geometric.__version__}")
 
 
@@ -128,7 +127,7 @@ def load_dataset(dataset, batch_dim=Batch_Size):
             in_channels = dataset.ndata['feature'].shape[1]
         num_class = 2
     elif type_task == "graph_classification":
-        n = int(len(dataset) * 20 / 100)
+        n = int(len(dataset) * 10 / 100)
         test_dataset = dataset[:n]
         val_dataset = dataset[n:2 * n]
         train_dataset = dataset[2 * n:]
@@ -139,7 +138,7 @@ def load_dataset(dataset, batch_dim=Batch_Size):
         if config["dataset"]["shufle_dataset"] == True:
             train_dataset, train_dataset, train_dataset = shuffle_dataset(dataset)
         else:
-            n = int(len(dataset) * 20 / 100)
+            n = int(len(dataset) * 10 / 100)
             test_dataset = dataset[:n]
             val_dataset = dataset[n:2 * n]
             train_dataset = dataset[2 * n:]

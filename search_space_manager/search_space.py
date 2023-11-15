@@ -142,7 +142,7 @@ def create_spatial_gnap_gl_space():
     multi_head = [1]
     hidden_channels = [16, 64, 128]
     normalizer = [False, "GraphNorm", "InstanceNorm"]
-    dropout = [0.0, 0.3, 0.5, 0, 7]
+    dropout = [0.0, 0.3, 0.5, 0.7]
     sp = {'gnnConv1': attention, 'gnnConv2': attention, 'aggregation1': agregation, 'aggregation2': agregation,
           'normalize1': normalizer, 'normalize2': normalizer, 'activation1': activation, 'activation2': activation,
           'multi_head1': multi_head, 'multi_head2': multi_head, 'hidden_channels1': hidden_channels,
@@ -175,7 +175,7 @@ def create_spatial_gnap_nl_space():  # a<b
     multi_head = [1]
     hidden_channels = [16, 64, 128]
     normalizer = ["GraphNorm", "InstanceNorm"]
-    dropout = [0.0, 0.3, 0.5, 0, 7]
+    dropout = [0.0, 0.3, 0.5, 0.7]
     sp = {'gnnConv1': attention, 'gnnConv2': attention, 'aggregation1': agregation, 'aggregation2': agregation,
           'normalize1': normalizer, 'normalize2': normalizer, 'activation1': activation, 'activation2': activation,
           'multi_head1': multi_head, 'multi_head2': multi_head, 'hidden_channels1': hidden_channels,

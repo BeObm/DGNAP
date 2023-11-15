@@ -15,6 +15,7 @@ from tqdm.auto import tqdm
 
 set_seed()
 
+
 def get_performance_distributions(e_search_space,
                                   dataset,
                                   predictor_graph_edge_index):  # get performance distribution of s*n models (n = search space size)
@@ -257,7 +258,7 @@ def get_option_maps(submodel):
         elif component in ['dropout1', "dropout2"]:
             comp_tmp = "dropout"
         else:
-            comp_tmp=component
+            comp_tmp = component
         component_module = importlib.import_module("search_space_manager.map_functions")
         map_func = getattr(component_module, f"map_{comp_tmp}")
         map_func_value = map_func(value)
@@ -286,23 +287,22 @@ def run_model(submodel_config, train_data, test_data, in_chanels, num_class, epo
     criterion = params_config["criterion"]
     performance_record = []
     test_performance_record = defaultdict(list)
-    c = 0
     for i in range(numround):
 
-            model =ddp_module(
-                               total_epochs=epochs,
-                               model_to_train=new_model,
-                               optimizer=optimizer,
-                               train_data=train_data,
-                               criterion=criterion,
-                               model_trainer=train_model)
+        model = ddp_module(
+            total_epochs=epochs,
+            model_to_train=new_model,
+            optimizer=optimizer,
+            train_data=train_data,
+            criterion=criterion,
+            model_trainer=train_model)
 
-            performance_score = test_model(model, test_data, type_data)
-            performance_record.append(performance_score[search_metric])
+        performance_score = test_model(model, test_data, type_data)
+        performance_record.append(performance_score[search_metric])
 
-            if type_data == "test":
-                for metric, value in performance_score.items():
-                    test_performance_record[metric].append(performance_score[metric])
+        if type_data == "test":
+            for metric, value in performance_score.items():
+                test_performance_record[metric].append(performance_score[metric])
 
     model_performance = stat.mean(performance_record)
     test_results = {}

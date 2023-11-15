@@ -22,10 +22,17 @@ from predictor_models import *
 import importlib
 
 
-def get_prediction(performance_records_path, e_search_space,predictor_graph_edge_index):
+def get_prediction(performance_records_path, e_search_space, predictor_graph_edge_index, option_decoder):
     if (config["predictor"]["predictor_dataset_type"]) == "graph":
-        feature_size=train_predictor_using_graph_dataset(performance_records_path)
-        TopK_final = predict_and_rank(e_search_space,predictor_graph_edge_index,feature_size)
+        feature_size = train_predictor_using_graph_dataset(performance_records_path)
+        if int(config['param']['search_space_strategy']) == 0:
+            TopK_final = predict_and_rank(e_search_space, predictor_graph_edge_index, feature_size)
+        elif int(config['param']['search_space_strategy']) == 1:
+            TopK_final = prob_reduce_and_rank(e_search_space, predictor_graph_edge_index, feature_size, option_decoder)
+        elif int(config['param']['search_space_strategy']) == 2:
+            TopK_final = gradient_reduce_and_rank(e_search_space, predictor_graph_edge_index, feature_size)
+        else:
+            raise ValueError("Incorrect value for search space management strategy")
     elif (config["predictor"]["predictor_dataset_type"]) == "table":
         TopK_final = get_prediction_from_table(performance_records_path, e_search_space)
     return TopK_final
@@ -37,12 +44,6 @@ def get_PredictorModel(predictor_model):
     train_predictor = getattr(task_model_obj, "train_predictor")
     test_predictor = getattr(task_model_obj, "test_predictor")
     return PredictorModel, train_predictor, test_predictor
-
-
-def load_predictor_model():
-    pass
-
-
 
 
 def train_predictor_using_graph_dataset(predictor_dataset_folder):
@@ -58,7 +59,7 @@ def train_predictor_using_graph_dataset(predictor_dataset_folder):
     train_loader, val_loader, feature_size = load_predictor_dataset(predictor_dataset_folder)
     set_seed()
     predictormodel, train_predictor, test_predictor = get_PredictorModel(config["predictor"]["Predictor_model"])
-   
+
     predictor_model = predictormodel(
         in_channels=feature_size,
         dim=dim,
@@ -77,9 +78,9 @@ def train_predictor_using_graph_dataset(predictor_dataset_folder):
     c = 0
     for i in tqdm(range(num_epoch)):
         loss = train_predictor(predictor_model=predictor_model,
-                              train_loader=train_loader,
-                              criterion=criterion,
-                              optimizer=optimizer)
+                               train_loader=train_loader,
+                               criterion=criterion,
+                               optimizer=optimizer)
 
         if loss < best_loss:
             best_loss = loss
@@ -90,18 +91,18 @@ def train_predictor_using_graph_dataset(predictor_dataset_folder):
             if c == int(config["predictor"]['patience']):
                 break
 
-    add_config("predictor", "best_loss", round(best_loss,6))
+    add_config("predictor", "best_loss", round(best_loss, 6))
     metrics_list = map_predictor_metrics()
     predictor_performance = test_predictor(model=best_predictor_model,
                                            test_loader=train_loader,
                                            metrics_list=metrics_list,
                                            title="Predictor training test")
-    torch.save(best_predictor_model,f"{config['path']['result_folder']}/'predictor_model_weight.pt'")
+    torch.save(best_predictor_model, f"{config['path']['result_folder']}/'predictor_model_weight.pt'")
     for metric, value in predictor_performance.items():
         add_config("results", f"{metric}_train", value)
         print(f"{metric}_train: {value}")
     print(f"Neural predictor training completed in {round((time.time() - start_train_time) / 60, 3)} minutes \n")
-    add_config("time", "predictor_training_time", (time.time()-start_train_time))
+    add_config("time", "predictor_training_time", (time.time() - start_train_time))
 
     predictor_performance = test_predictor(model=best_predictor_model,
                                            test_loader=val_loader,
@@ -113,14 +114,14 @@ def train_predictor_using_graph_dataset(predictor_dataset_folder):
 
     return feature_size
 
-def predict_and_rank(e_search_space,predictor_graph_edge_index,feature_size):
+
+def predict_and_rank(e_search_space, predictor_graph_edge_index, feature_size):
     set_seed()
     k = int(config["param"]["k"])
     predict_sample = int(config["param"]["predict_sample"])
     search_metric = config["param"]["search_metric"]
     metric_rule = config["param"]["best_search_metric_rule"]
     set_seed()
-
     # Load predictor model weight
     try:
         dim = int(config["predictor"]["dim"])
@@ -134,41 +135,32 @@ def predict_and_rank(e_search_space,predictor_graph_edge_index,feature_size):
         predictor_model = torch.load(f"{config['path']['result_folder']}/'predictor_model_weight.pt'").to(device)
         predictor_model.eval()
     except:
-        raise ValueError("Unable to load neural predictor weights, please make sure the neural predictor weight is available and try again ")
-
-
+        raise ValueError("Wrong pre-trained predictor weight")
     print(f"{'=**=' * 10}  Sampling architecture from search space {'=**=' * 10} ")
     sample_list = random_sampling(e_search_space=e_search_space, n_sample=predict_sample, predictor=True)
-
     print(f"\n {'=**=' * 10}  Starting predicting architecture performances {'=**=' * 10} ")
     lists = [elt for elt in range(0, len(sample_list), int(config["param"]["batch_sample"]))]
     TopK_models = []
     start_predict_time = time.time()
     for i in tqdm(lists):
         a = i + int(config["param"]["batch_sample"])
-
         if a > len(sample_list):
             a = len(sample_list)
         sample = sample_list[i:a]
-
         #    transform model configuration into graph data
         graph_list = []
         for model_config in sample:
             x = get_nodes_features(model_config, e_search_space)
-            edge_index = get_edge_index(model_config,predictor_graph_edge_index)
+            edge_index = get_edge_index(model_config, predictor_graph_edge_index)
             graphdata = Data(x=x, edge_index=edge_index, num_nodes=x.shape[0],
                              model_config_choices=deepcopy(model_config))
             graph_list.append(graphdata)
-
         sample_dataset = DataLoader(graph_list, batch_size=Batch_Size, shuffle=False)
-
         TopK = predict_neural_performance_using_gnn(predictor_model, sample_dataset)
         TopK_models.append(TopK)
-
     TopK_model = pd.concat(TopK_models)
-
     if metric_rule == "max":
-         TopK_model = TopK_model.nlargest(k, search_metric, keep="all")
+        TopK_model = TopK_model.nlargest(k, search_metric, keep="all")
     elif metric_rule == 'min':
         TopK_model = TopK_model.nsmallest(k, search_metric, keep="all")
     else:
@@ -176,11 +168,249 @@ def predict_and_rank(e_search_space,predictor_graph_edge_index,feature_size):
             f"{'++' * 20} {metric_rule} is an invalid rule. Metric rule should be 'min' or 'max'")
         sys.exit()
     TopK_final = TopK_model[:k]
-
     prediction_time = round(time.time() - start_predict_time, 2)
     print(f" {len(lists)} Architecture performances predicted in {round(prediction_time / 60, 3)} minutes")
     add_config("time", "pred_time", prediction_time)
+    return TopK_final
 
+
+def gradient_reduce_and_rank(e_search_space, predictor_graph_edge_index, feature_size, option_decoder, ratio_treshold=0.3):
+    set_seed()
+    dim = int(config["predictor"]["dim"])
+    drop_out = float(config["predictor"]["drop_out"])
+    k = int(config["param"]["k"])
+    predict_sample = int(config["param"]["predict_sample"])
+    search_metric = config["param"]["search_metric"]
+    metric_rule = config["param"]["best_search_metric_rule"]
+    # Load predictor model and weights
+    try:
+        model, train_predictor, test_predictor = get_PredictorModel(config["predictor"]["Predictor_model"])
+        predictor_model = model(
+            in_channels=feature_size,
+            dim=dim,
+            drop_out=drop_out,
+            out_channels=1)
+        predictor_model = torch.load(f"{config['path']['result_folder']}/'predictor_model_weight.pt'").to(device)
+        predictor_model.eval()
+    except:
+        raise ValueError("Wrong pre-trained predictor path")
+    base_space = {}
+    rnd = 1
+    while base_space != e_search_space:
+        TopK_models = []
+        c_count = {}
+        base_space = deepcopy(e_search_space)
+        sample_list = random_sampling(e_search_space=e_search_space, n_sample=predict_sample, predictor=True)
+
+        lists = [elt for elt in range(0, len(sample_list), int(config["param"]["batch_sample"]))]
+        print(f"Start Round Number {rnd} of Search space reduction")
+        for i in tqdm(lists, total=len(lists)):
+            a = i + int(config["param"]["batch_sample"])
+            if a > len(sample_list):
+                a = len(sample_list)
+            sample = sample_list[i:a]
+
+            #    transform model configuration into graph data
+            graph_list = []
+            for model_config in sample:
+                x = get_nodes_features(model_config, e_search_space)
+                edge_index = get_edge_index(model_config, predictor_graph_edge_index)
+                graphdata = Data(x=x,
+                                 edge_index=edge_index,
+                                 num_nodes=x.shape[0],
+                                 model_config_choices=deepcopy(model_config))
+                graph_list.append(graphdata)
+            sample_dataset = DataLoader(graph_list, batch_size=Batch_Size, shuffle=False)
+
+            TopK = predict_neural_performance_using_gnn(predictor_model, sample_dataset)
+            TopK_models.append(TopK)
+        TopK_model = pd.concat(TopK_models)
+        if metric_rule == "max":
+            TopK_model = TopK_model.nlargest(k, search_metric, keep="all")
+        elif metric_rule == 'min':
+            TopK_model = TopK_model.nsmallest(k, search_metric, keep="all")
+        else:
+            print(
+                f"{'++' * 20} {metric_rule} is an invalid rule. Metric rule should be 'min' or 'max'")
+            sys.exit()
+        for id, row in TopK_model.iterrows():  # this loop to aggregate the occurrence of each option in the top-k architectures
+            for elt in row["model_config"]:
+                if elt[0] in c_count:
+                    if option_decoder[elt[1]] in c_count[elt[0]]:
+                        c_count[elt[0]][option_decoder[elt[1]]] += 1
+                    else:
+                        c_count[elt[0]][option_decoder[elt[1]]] = 0
+                else:
+                    c_count[elt[0]] = {}
+                    c_count[elt[0]][option_decoder[elt[1]]] = 0
+        for fct, fct_count in c_count.items():  # this loop to remove all option with low ratio in the search space
+            for option, option_count in fct_count.items():
+                option_ratio = option_count / len(TopK_model)
+                if option_ratio < ratio_treshold:
+                    if option in e_search_space[fct] and len(e_search_space[fct]) > 1:
+                        e_search_space[fct].pop(option)
+                    else:
+                        print(f"The option {option} is no longer present in the search space")
+        print(f"The search space after {rnd} is : {e_search_space}")
+        rnd += 1
+    print(f"The final search space is {e_search_space}")
+    sample_list = random_sampling(e_search_space=e_search_space, n_sample=0, predictor=True)
+    lists = [elt for elt in range(0, len(sample_list), int(config["param"]["batch_sample"]))]
+    TopK_models = []
+    start_predict_time = time.time()
+    print("Start prediction...")
+    edge_index = get_edge_index(model_config, predictor_graph_edge_index)
+    for i in tqdm(lists, total=len(lists)):
+        a = i + int(config["param"]["batch_sample"])
+        if a > len(sample_list):
+            a = len(sample_list)
+        sample = sample_list[i:a]
+        #    transform model configuration into graph data
+        graph_list = []
+        for model_config in sample:
+            x = get_nodes_features(model_config, e_search_space)
+            graphdata = Data(x=x,
+                             edge_index=edge_index,
+                             num_nodes=x.shape[0],
+                             model_config_choices=deepcopy(model_config))
+            graph_list.append(graphdata)
+        sample_dataset = DataLoader(graph_list, batch_size=Batch_Size, shuffle=False)
+        TopK = predict_neural_performance_using_gnn(predictor_model, sample_dataset)
+        TopK_models.append(TopK)
+    TopK_model = pd.concat(TopK_models)
+    if metric_rule == "max":
+        TopK_model = TopK_model.nlargest(k, search_metric, keep="all")
+    elif metric_rule == 'min':
+        TopK_model = TopK_model.nsmallest(k, search_metric, keep="all")
+    else:
+        print(
+            f"{'++' * 20} {metric_rule} is an invalid rule. Metric rule should be 'min' or 'max'")
+        sys.exit()
+    TopK_final = TopK_model[:k]
+    prediction_time = round(time.time() - start_predict_time, 2)
+    print("\n End architecture performance prediction. ")
+    add_config("time", "pred_time", prediction_time)
+    TopK_model.to_excel(f"{config['path']['result_folder']}/Topk_model_configs.xlsx")
+    return TopK_final
+
+
+def prob_reduce_and_rank(e_search_space, predictor_graph_edge_index, feature_size, option_decoder, ratio_treshold=0.3):
+    set_seed()
+    dim = int(config["predictor"]["dim"])
+    drop_out = float(config["predictor"]["drop_out"])
+    k = int(config["param"]["k"])
+    predict_sample = int(config["param"]["predict_sample"])
+    search_metric = config["param"]["search_metric"]
+    metric_rule = config["param"]["best_search_metric_rule"]
+    # Load predictor model and weights
+    try:
+        model, train_predictor, test_predictor = get_PredictorModel(config["predictor"]["Predictor_model"])
+        predictor_model = model(
+            in_channels=feature_size,
+            dim=dim,
+            drop_out=drop_out,
+            out_channels=1)
+        predictor_model = torch.load(f"{config['path']['result_folder']}/'predictor_model_weight.pt'").to(device)
+        predictor_model.eval()
+    except:
+        raise ValueError("Wrong pre-trained predictor path")
+    base_space = {}
+    rnd = 1
+    while base_space != e_search_space:
+        TopK_models = []
+        c_count = {}
+        base_space = deepcopy(e_search_space)
+        sample_list = random_sampling(e_search_space=e_search_space, n_sample=predict_sample, predictor=True)
+
+        lists = [elt for elt in range(0, len(sample_list), int(config["param"]["batch_sample"]))]
+        print(f"Start Round Number {rnd} of Search space reduction")
+        for i in tqdm(lists, total=len(lists)):
+            a = i + int(config["param"]["batch_sample"])
+            if a > len(sample_list):
+                a = len(sample_list)
+            sample = sample_list[i:a]
+
+            #    transform model configuration into graph data
+            graph_list = []
+            for model_config in sample:
+                x = get_nodes_features(model_config, e_search_space)
+                edge_index = get_edge_index(model_config, predictor_graph_edge_index)
+                graphdata = Data(x=x,
+                                 edge_index=edge_index,
+                                 num_nodes=x.shape[0],
+                                 model_config_choices=deepcopy(model_config))
+                graph_list.append(graphdata)
+            sample_dataset = DataLoader(graph_list, batch_size=Batch_Size, shuffle=False)
+
+            TopK = predict_neural_performance_using_gnn(predictor_model, sample_dataset)
+            TopK_models.append(TopK)
+        TopK_model = pd.concat(TopK_models)
+        if metric_rule == "max":
+            TopK_model = TopK_model.nlargest(k, search_metric, keep="all")
+        elif metric_rule == 'min':
+            TopK_model = TopK_model.nsmallest(k, search_metric, keep="all")
+        else:
+            print(
+                f"{'++' * 20} {metric_rule} is an invalid rule. Metric rule should be 'min' or 'max'")
+            sys.exit()
+        for id, row in TopK_model.iterrows():  # this loop to aggregate the occurrence of each option in the top-k architectures
+            for elt in row["model_config"]:
+                if elt[0] in c_count:
+                    if option_decoder[elt[1]] in c_count[elt[0]]:
+                        c_count[elt[0]][option_decoder[elt[1]]] += 1
+                    else:
+                        c_count[elt[0]][option_decoder[elt[1]]] = 0
+                else:
+                    c_count[elt[0]] = {}
+                    c_count[elt[0]][option_decoder[elt[1]]] = 0
+        for fct, fct_count in c_count.items():  # this loop to remove all option with low ratio in the search space
+            for option, option_count in fct_count.items():
+                option_ratio = option_count / len(TopK_model)
+                if option_ratio < ratio_treshold:
+                    if option in e_search_space[fct] and len(e_search_space[fct]) > 1:
+                        e_search_space[fct].pop(option)
+                    else:
+                        print(f"The option {option} is no longer present in the search space")
+        print(f"The search space after {rnd} is : {e_search_space}")
+        rnd += 1
+    print(f"The final search space is {e_search_space}")
+    sample_list = random_sampling(e_search_space=e_search_space, n_sample=0, predictor=True)
+    lists = [elt for elt in range(0, len(sample_list), int(config["param"]["batch_sample"]))]
+    TopK_models = []
+    start_predict_time = time.time()
+    print("Start prediction...")
+    edge_index = get_edge_index(model_config, predictor_graph_edge_index)
+    for i in tqdm(lists, total=len(lists)):
+        a = i + int(config["param"]["batch_sample"])
+        if a > len(sample_list):
+            a = len(sample_list)
+        sample = sample_list[i:a]
+        #    transform model configuration into graph data
+        graph_list = []
+        for model_config in sample:
+            x = get_nodes_features(model_config, e_search_space)
+            graphdata = Data(x=x,
+                             edge_index=edge_index,
+                             num_nodes=x.shape[0],
+                             model_config_choices=deepcopy(model_config))
+            graph_list.append(graphdata)
+        sample_dataset = DataLoader(graph_list, batch_size=Batch_Size, shuffle=False)
+        TopK = predict_neural_performance_using_gnn(predictor_model, sample_dataset)
+        TopK_models.append(TopK)
+    TopK_model = pd.concat(TopK_models)
+    if metric_rule == "max":
+        TopK_model = TopK_model.nlargest(k, search_metric, keep="all")
+    elif metric_rule == 'min':
+        TopK_model = TopK_model.nsmallest(k, search_metric, keep="all")
+    else:
+        print(
+            f"{'++' * 20} {metric_rule} is an invalid rule. Metric rule should be 'min' or 'max'")
+        sys.exit()
+    TopK_final = TopK_model[:k]
+    prediction_time = round(time.time() - start_predict_time, 2)
+    print("\n End architecture performance prediction. ")
+    add_config("time", "pred_time", prediction_time)
+    TopK_model.to_excel(f"{config['path']['result_folder']}/Topk_model_configs.xlsx")
     return TopK_final
 
 
@@ -214,7 +444,7 @@ def predict_neural_performance_using_gnn(model, graphLoader):
 
     df = pd.DataFrame.from_dict(prediction_dict)
     if metric_rule == "max":
-         TopK = df.nlargest(n=k, columns=search_metric, keep="all")
+        TopK = df.nlargest(n=k, columns=search_metric, keep="all")
     elif metric_rule == 'min':
         TopK = df.nsmallest(n=k, columns=search_metric, keep="all")
     TopK = TopK[:k]
@@ -231,5 +461,5 @@ def rank_graphs(model, dataset, batch_size=32):
             batch_scores = model(batch)
             scores.extend(batch_scores.cpu().tolist())
     ranked_indices = sorted(range(len(scores)), key=lambda i: scores[i], reverse=True)
-    ranked_graphs = [(dataset[i], rank+1) for rank, i in enumerate(ranked_indices)]
+    ranked_graphs = [(dataset[i], rank + 1) for rank, i in enumerate(ranked_indices)]
     return ranked_graphs

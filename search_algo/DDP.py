@@ -9,13 +9,14 @@ from torch.distributed import init_process_group, destroy_process_group
 import os
 from settings.config_file import Batch_Size
 from torch.utils.data import Dataset
-
+from settings.config_file import *
 
 def ddp_setup():
     init_process_group(backend="nccl")
     torch.cuda.set_device(int(os.environ["LOCAL_RANK"]))
 
 def prepare_dataloader(dataset: Dataset, batch_size: int):
+    set_seed()
     return DataLoader(
         dataset,
         batch_size=batch_size,
@@ -71,7 +72,9 @@ class Trainer:
 
 
 def ddp_module(total_epochs: int, model_to_train, optimizer, train_data, criterion, model_trainer):
+
     train_dataloader = prepare_dataloader(train_data, Batch_Size)
+    set_seed()
     trainer = Trainer(model_to_train, train_dataloader, optimizer, criterion, model_trainer)
     trainer.train(total_epochs)
     # destroy_process_group()
