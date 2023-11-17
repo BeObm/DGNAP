@@ -80,8 +80,8 @@ def build_feature(function, option, num_function, e_search_space):  # creer les 
     max_option = int(config["param"]["max_option"])
 
     if type_encoding == "one_hot":
-        d = np.zeros((total_choices), dtype=int)
-        # print("option===",option)    
+        d = np.zeros(total_choices, dtype=int)
+        # print("option===",option)
         d[option[1]] = 1
     elif type_encoding == "embedding":
         d = option[2]

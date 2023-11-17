@@ -30,14 +30,14 @@ def sample_models(n_sample, e_search_space):
 
 def random_sampling(e_search_space, n_sample=0, predictor=False):
     timestart = time.time()
-
+    model_list = []
     set_seed()
     if n_sample != 0:
 
         temp_dict = {}
         for k, v in e_search_space.items():
             temp_dict[k] = list(v.keys())
-        model_list = []
+
         lst = ['head', 'heads', 'num_heads']
         for i in tqdm(range(n_sample)):
             model_dict = {}
@@ -50,14 +50,18 @@ def random_sampling(e_search_space, n_sample=0, predictor=False):
     else:
         print('I am sampling all models from a vast search space, please be patient ...!')
         keys, values = zip(*e_search_space.items())
-        model_list = [dict(zip(keys, v)) for v in itertools.product(*values)]
-        print("Total sampled models: ", len(model_list))
+        tmp_model_list = [dict(zip(keys, v)) for v in itertools.product(*values)]
+        print("Total sampled models: ", len(tmp_model_list))
+        for model in tmp_model_list:
+            model_dict = {}
+            for key, value in model.items():
+                model_dict[key]=(value, e_search_space[key][value][0], e_search_space[key][value][1])
+            model_list.append(model_dict)
     if predictor == True:
         sampling_time = round(time.time() - timestart, 2)
         add_config("time", "sampling_time", sampling_time)
 
     return model_list
-
 
 def uniform_sampling(n_sample, e_search_space, predictor=False):
     set_seed()

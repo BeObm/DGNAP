@@ -20,6 +20,7 @@ def get_performance_distributions(e_search_space,
                                   dataset,
                                   predictor_graph_edge_index):  # get performance distribution of s*n models (n = search space size)
     set_seed()
+
     num_run_sample = int(config["param"]["z_sample"])
     metric_rule = config["param"]["best_search_metric_rule"]
     epochs = int(config["param"]["sample_model_epochs"])
@@ -41,7 +42,6 @@ def get_performance_distributions(e_search_space,
     train_dataset, val_dataset, test_dataset, in_channels, num_class = load_dataset(dataset)
 
     for no, submodel in tqdm(enumerate(model_list)):
-
         submodel_config = {}
         # extract the model config choices
         for key, value in submodel.items():
@@ -50,7 +50,7 @@ def get_performance_distributions(e_search_space,
 
         model_performance = run_model(submodel_config=submodel_config,
                                       train_data=train_dataset,
-                                      test_data=val_dataset,
+                                      val_data=val_dataset,
                                       in_chanels=in_channels,
                                       num_class=num_class,
                                       epochs=epochs,
@@ -185,7 +185,7 @@ def get_best_model(topk_list, option_decoder, dataset):
         sys.stdout.write(f"Architecture {num_model}/{len(topk_list)}:{[dict_model[opt] for opt in dict_model.keys()]} ")
         model_performance = run_model(submodel_config=dict_model,
                                       train_data=train_dataset,
-                                      test_data=val_dataset,
+                                      val_data=val_dataset,
                                       in_chanels=in_channels,
                                       num_class=num_class,
                                       epochs=epochs,
@@ -266,7 +266,7 @@ def get_option_maps(submodel):
     return model_config
 
 
-def run_model(submodel_config, train_data, test_data, in_chanels, num_class, epochs, numround=1, shared_weight=None,
+def run_model(submodel_config, train_data, val_data, in_chanels, num_class, epochs, numround=1, shared_weight=None,
               type_data="val"):
     set_seed()
     search_metric = config["param"]["search_metric"]
@@ -275,7 +275,6 @@ def run_model(submodel_config, train_data, test_data, in_chanels, num_class, epo
     params_config["in_channels"] = in_chanels
     params_config["num_class"] = num_class
     new_model = GNN_Model(params_config)
-
     if shared_weight != None:
         try:
             new_model.load_state_dict(shared_weight)
@@ -289,17 +288,21 @@ def run_model(submodel_config, train_data, test_data, in_chanels, num_class, epo
     test_performance_record = defaultdict(list)
     for i in range(numround):
 
-        model = ddp_module(
+        trainer = ddp_module(
             total_epochs=epochs,
             model_to_train=new_model,
             optimizer=optimizer,
             train_data=train_data,
             criterion=criterion,
-            model_trainer=train_model)
+            model_trainer=train_model,
+            model_tester=test_model)
 
-        performance_score = test_model(model, test_data, type_data)
+        trainer.eval()
+        performance_score = test_model(model=trainer,
+                                       test_loader=val_data,
+                                       devise=torch.device("cuda:0"),
+                                       type_data=type_data)
         performance_record.append(performance_score[search_metric])
-
         if type_data == "test":
             for metric, value in performance_score.items():
                 test_performance_record[metric].append(performance_score[metric])

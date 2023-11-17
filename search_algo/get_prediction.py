@@ -18,9 +18,8 @@ from search_space_manager.search_space import *
 from search_space_manager.sample_models import *
 from copy import deepcopy
 from predictor_models import *
-
 import importlib
-
+device=torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 def get_prediction(performance_records_path, e_search_space, predictor_graph_edge_index, option_decoder):
     if (config["predictor"]["predictor_dataset_type"]) == "graph":
@@ -52,15 +51,14 @@ def train_predictor_using_graph_dataset(predictor_dataset_folder):
     dim = int(config["predictor"]["dim"])
     drop_out = float(config["predictor"]["drop_out"])
     lr = float(config["predictor"]["lr"])
-    momentum = float(config["predictor"]["momentum"])
     wd = float(config["predictor"]["wd"])
     num_epoch = int(config["predictor"]["num_epoch"])
     start_train_time = time.time()
     train_loader, val_loader, feature_size = load_predictor_dataset(predictor_dataset_folder)
     set_seed()
-    predictormodel, train_predictor, test_predictor = get_PredictorModel(config["predictor"]["Predictor_model"])
+    predictor, train_predictor, test_predictor = get_PredictorModel(config["predictor"]["Predictor_model"])
 
-    predictor_model = predictormodel(
+    predictor_model = predictor(
         in_channels=feature_size,
         dim=dim,
         drop_out=drop_out,
@@ -388,6 +386,7 @@ def prob_reduce_and_rank(e_search_space, predictor_graph_edge_index, feature_siz
         #    transform model configuration into graph data
         graph_list = []
         for model_config in sample:
+            print(f"this is the model configuration {model_config}")
             x = get_nodes_features(model_config, e_search_space)
             graphdata = Data(x=x,
                              edge_index=edge_index,

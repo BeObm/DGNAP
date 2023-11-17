@@ -11,7 +11,6 @@ from torch.nn import Linear, ReLU, Sequential
 from search_algo.utils import *
 # from sklearn.metrics import accuracy_score#, precision_score, recall_score
 from settings.config_file import *
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 set_seed()
 
 
@@ -161,7 +160,7 @@ def train_function(model, data, criterion, optimizer,devise):
 
 
 @torch.no_grad()
-def test_function(model, test_loader,devise=device,type_data="val"):
+def test_function(model, test_loader,devise,type_data="val"):
     model= model.to(devise)
     model.eval()
     true_labels = []

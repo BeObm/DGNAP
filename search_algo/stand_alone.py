@@ -25,7 +25,7 @@ def get_test_performance(submodel, dataset):
 
     model_performance = run_model(submodel_config=submodel,
                                   train_data=train_loader,
-                                  test_data=test_loader,
+                                  val_data=test_loader,
                                   in_chanels=in_channels,
                                   num_class=num_class,
                                   epochs=epochs,

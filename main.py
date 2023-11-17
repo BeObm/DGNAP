@@ -7,12 +7,16 @@ from search_algo.write_results import *
 from search_algo.stand_alone import *
 from load_data.load_data import *
 from search_algo.utils import manage_budget,Generate_time_cost,create_paths
+from torch.distributed import init_process_group,destroy_process_group
+
 import time
 from settings.config_file import *
 import argparse
 
 if __name__ == "__main__":
     set_seed()
+    init_process_group(backend="gloo")
+    torch.cuda.set_device(int(os.environ["LOCAL_RANK"]))
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset", help="Dataset name", default="ENZYMES")
     parser.add_argument("--type_task", help="type_task name", default="graph_classification", choices=["graph_anomaly", "graph_classification", "graph_regression","node_classification"])
@@ -41,7 +45,6 @@ if __name__ == "__main__":
     # print(dataset)
 
     e_search_space,option_decoder,predictor_graph_edge_index = create_e_search_space(args.search_space_name)
-    ddp_setup()
     performance_records_path = get_performance_distributions(e_search_space, dataset,predictor_graph_edge_index)
     # performance_records_path = "predictor_training_data_elliptic"
     TopK_final = get_prediction(performance_records_path,e_search_space,predictor_graph_edge_index,option_decoder)

@@ -11,9 +11,9 @@ from datetime import datetime
 
 # device = torch.device('cpu')
 num_workers = 8
-num_seed = 2345
+num_seed = 42
 config = ConfigParser()
-Batch_Size = 96
+Batch_Size = 264
 
 # 
 RunCode = dates = datetime.now().strftime("%d-%m_%Hh%M")
@@ -61,9 +61,9 @@ def create_config_file(type_task,dataset_name):
         "train_ratio":0.4,
         "nfcode": 56,  # number of digit for each function code when using embedding method
         "noptioncode": 8,
-        "sample_model_epochs":20,
+        "sample_model_epochs":2,
         "topk_model_epochs": 2,
-        "best_model_epochs": 200,
+        "best_model_epochs": 20,
         "patience":100,
         'search_metric':"roc_auc",    #matthews_corr_coef, balanced_accuracy_score, accuracy_score, roc_auc, auc_pr
         'best_search_metric_rule':"max", # max
@@ -72,15 +72,15 @@ def create_config_file(type_task,dataset_name):
         "feature_size_choice": "total_choices",  # total_functions total_choices  # for one hot encoding using graph dataset for predictor, use"total choices
         'type_input_graph': "directed",
         "learning_type": "unsupervised",
-        "predict_sample": 500000,
+        "predict_sample": 500,
         "search_space_strategy": 1,  # 0 for all, 1 for prob. based  reduction, 2 for gradient based reduction
-        "batch_sample": 10000
+        "batch_sample": 1000
     }
 
     config["predictor"] = {
         "predictor_dataset_type": "graph",
-        "Predictor_model": "GNN_ranking", # "GNN_ranking","GNN_performance"
-        "predictor_metric":"spearman_corr",  #, ["R2_score", "pearson_corr", "kendall_corr", "spearman_corr"], ["spearman_corr","map_score", "ndcg_score", "kendall_corr", "Top_k_Acc"]
+        "Predictor_model": "GNN_performance", # "GNN_ranking","GNN_performance"
+        "predictor_metric":"kendall_corr",  #, ["R2_score", "pearson_corr", "kendall_corr", "spearman_corr"], ["spearman_corr","map_score", "ndcg_score", "kendall_corr", "Top_k_Acc"]
         "pred_Batch_Size":64,
         "dim": 128,
         "drop_out": 0.2,

@@ -35,7 +35,7 @@ from torch_geometric.nn import GCNConv, GraphSAGE, SAGEConv, GATConv, LEConv, GE
 from torch_geometric.nn.norm import GraphNorm, InstanceNorm, BatchNorm
 
 from settings.config_file import *
-
+device=torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 class Predictor(MessagePassing):
     def __init__(self, in_channels, dim, out_channels, drop_out):
