@@ -8,14 +8,14 @@ import os.path as osp
 import os
 from datetime import datetime
 
-
+# device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 # device = torch.device('cpu')
 num_workers = 8
 num_seed = 42
 config = ConfigParser()
-Batch_Size = 264
+Batch_Size = 96
 
-# 
+#
 RunCode = dates = datetime.now().strftime("%d-%m_%Hh%M")
 
 
@@ -45,7 +45,7 @@ def create_config_file(type_task,dataset_name):
         "dataset_name": dataset_name,  # Citeseer,
         'type_task': type_task,  # it could be "graph classification", "link prediction",node classification
         "dataset_root": f"{project_root_dir}/data/{type_task}",
-        "shufle_dataset":True
+        "shufle_dataset":False
     }
 
     # fill other configuration information
@@ -53,41 +53,42 @@ def create_config_file(type_task,dataset_name):
         "project_dir": project_root_dir,
         'config_filename': config_filename,
         "run_code": RunCode,
-        "budget":80,
-        "k": 10,
+        "budget":800,
+        "k": 100,
         "z_sample": 1,  # Number of time  sampled models are trained before we report their performance
         "z_topk": 1,
         "z_final": 2,
         "train_ratio":0.4,
         "nfcode": 56,  # number of digit for each function code when using embedding method
         "noptioncode": 8,
-        "sample_model_epochs":2,
-        "topk_model_epochs": 2,
-        "best_model_epochs": 20,
+        "sample_model_epochs":200,
+        "topk_model_epochs": 200,
+        "best_model_epochs": 2000,
         "patience":100,
         'search_metric':"roc_auc",    #matthews_corr_coef, balanced_accuracy_score, accuracy_score, roc_auc, auc_pr
         'best_search_metric_rule':"max", # max
         "encoding_method": "one_hot",  # ={one_hot, embedding,index_embedding}
         "type_sampling": "controlled_stratified_sampling",  # random_sampling, uniform_sampling, controlled_stratified_sampling
+
         "feature_size_choice": "total_choices",  # total_functions total_choices  # for one hot encoding using graph dataset for predictor, use"total choices
         'type_input_graph': "directed",
-        "learning_type": "unsupervised",
-        "predict_sample": 500,
-        "search_space_strategy": 1,  # 0 for all, 1 for prob. based  reduction, 2 for gradient based reduction
-        "batch_sample": 1000
+        "use_paralell": "no",
+        "learning_type": "supervised",
+        "predict_sample": 500000,
+        "batch_sample": 10000
     }
 
     config["predictor"] = {
         "predictor_dataset_type": "graph",
-        "Predictor_model": "GNN_performance", # "GNN_ranking","GNN_performance"
-        "predictor_metric":"kendall_corr",  #, ["R2_score", "pearson_corr", "kendall_corr", "spearman_corr"], ["spearman_corr","map_score", "ndcg_score", "kendall_corr", "Top_k_Acc"]
+        "Predictor_model": "GNN_ranking", # "GNN_ranking","GNN_performance"
+        "predictor_metric":"spearman_corr",  #, ["R2_score", "pearson_corr", "kendall_corr", "spearman_corr"], ["spearman_corr","map_score", "ndcg_score", "kendall_corr", "Top_k_Acc"]
         "pred_Batch_Size":64,
         "dim": 128,
         "drop_out": 0.2,
         "lr": 0.001,
-        "wd": 0.0005,
-        "momentum":0.9,
-        "num_epoch": 500,
+        "wd": 0.0001,
+        "momentum":0.8,
+        "num_epoch": 700,
         "criterion":"MSELoss", # , [MSELoss,]  [PairwiseLoss, MarginRankingLoss]
         "optimizer":"adam",
         "patience":45
