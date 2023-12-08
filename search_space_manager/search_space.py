@@ -28,10 +28,13 @@ def search_space_embeddings(sp, a=0, b=1):
         total_choices = total_choices + len(v)
         if len(v) > max_option:
             max_option = len(v)
-    add_config("param", "max_option", max_option)
-    add_config("param", "total_function", sp_size)
-    add_config("param", "total_choices", total_choices)
-    add_config("param", "size_sp", t1)
+    add_config("search_space", "max_option", max_option)
+    add_config("search_space", "total_function", sp_size)
+    add_config("search_space", "total_choices", total_choices)
+    add_config("search_space", "size_sp", t1)
+    add_config("search_space", "Final_total_function", sp_size)
+    add_config("search_space", "final_total_choices", total_choices)
+    add_config("search_space", "final_size", t1)
 
     print(
         f'The search space has {sp_size} Components, a total of {total_choices} choices and {t1} possible GNN models.')

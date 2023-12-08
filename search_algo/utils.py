@@ -75,9 +75,9 @@ def Accuracy_score(y_true, y_pred):
 def build_feature(function, option, num_function, e_search_space):  # creer les feature d un graph provenant d un submodel
     set_seed()
     type_encoding = config["param"]["encoding_method"]
-    total_choices = int(config["param"]["total_choices"])
-    total_function = int(config["param"]["total_function"])
-    max_option = int(config["param"]["max_option"])
+    total_choices = int(config["search_space"]["total_choices"])
+    total_function = int(config["search_space"]["total_function"])
+    max_option = int(config["search_space"]["max_option"])
 
     if type_encoding == "one_hot":
         d = np.zeros(total_choices, dtype=int)
@@ -321,3 +321,11 @@ def create_paths():
     add_config("path", "predictor_dataset_folder", predictor_results_folder)
 
     add_config("path", "predictor_weight_path", result_folder)
+def get_sp_details(sp):
+    total_choices = 0
+    t1 = 1
+    sp_size = len(sp.keys())
+    for k, v in sp.items():
+        t1 = t1 * len(v)
+        total_choices += len(v)
+    return sp_size,total_choices,t1

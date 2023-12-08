@@ -19,7 +19,7 @@ def load_predictor_dataset(dataset_source_path):
     val_dataset = graph_list[:val_size]
     train_dataset = graph_list[val_size:]
     print(f" Neural Predictor Dataset Description : ( #Graphs:{len(graph_list)} | Feature size:{train_dataset[1].x.shape[1]} | Train:{len(train_dataset)} | Val:{len(val_dataset)})")
-
+    set_seed()
     train_loader = DataLoader(train_dataset, batch_size=pred_Batch_Size, shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=pred_Batch_Size, shuffle=False)
 

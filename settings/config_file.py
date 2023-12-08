@@ -13,7 +13,7 @@ from datetime import datetime
 num_workers = 8
 num_seed = 42
 config = ConfigParser()
-Batch_Size = 96
+Batch_Size = 96*3
 
 #
 RunCode = dates = datetime.now().strftime("%d-%m_%Hh%M")
@@ -84,14 +84,14 @@ def create_config_file(type_task,dataset_name):
         "predictor_metric":"spearman_corr",  #, ["R2_score", "pearson_corr", "kendall_corr", "spearman_corr"], ["spearman_corr","map_score", "ndcg_score", "kendall_corr", "Top_k_Acc"]
         "pred_Batch_Size":64,
         "dim": 128,
-        "drop_out": 0.2,
-        "lr": 0.001,
+        "drop_out": 0.3,
+        "lr": 0.005,
         "wd": 0.0001,
         "momentum":0.8,
-        "num_epoch": 700,
+        "num_epoch": 500,
         "criterion":"MSELoss", # , [MSELoss,]  [PairwiseLoss, MarginRankingLoss]
         "optimizer":"adam",
-        "patience":45
+        "patience":50
     }
 
     config["time"] = {

@@ -32,7 +32,8 @@ class Trainer:
             optimizer: torch.optim.Optimizer,
             criterion: torch.nn.functional,
             train_model,
-            model_tester
+            model_tester,
+            type_model
     ) -> None:
         self.best_epoch = None
         self.weight_path = 'temp_best_gnn.pth'
@@ -43,6 +44,7 @@ class Trainer:
         self.criterion = criterion
         self.train_model = train_model
         self.model_tester = model_tester
+        self.type_model=type_model
         self.best_model = None
         print(f"GPU id is {self.gpu_id}")
 
@@ -84,13 +86,13 @@ class Trainer:
                         best_performance = perf_value
                         # torch.save(self.model, self.weight_path)
                         self.best_epoch = epoch + 1
-                print(f'Epoch: {epoch + 1} | Loss: {loss:.4f} | {config["param"]["search_metric"]}:{perf_value:.4f}')
+                # print(f'Epoch: {epoch + 1} | Loss: {loss:.4f} | {config["param"]["search_metric"]}:{perf_value:.4f}')
         return self.model
 
 
-def ddp_module(total_epochs: int, model_to_train, optimizer, train_data, criterion, model_trainer, model_tester):
-    train_dataloader = prepare_dataloader(train_data, Batch_Size)
+def ddp_module(total_epochs: int, model_to_train, optimizer, train_data, criterion, model_trainer, model_tester,type_model):
     set_seed()
-    trainer = Trainer(model_to_train, train_dataloader, optimizer, criterion, model_trainer, model_tester)
+    train_dataloader = prepare_dataloader(train_data, Batch_Size)
+    trainer = Trainer(model_to_train, train_dataloader, optimizer, criterion, model_trainer, model_tester,type_model)
     model = trainer.train(total_epochs)
     return model

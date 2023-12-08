@@ -13,8 +13,6 @@ import importlib
 from search_algo.DDP import *
 from tqdm.auto import tqdm
 
-set_seed()
-
 
 def get_performance_distributions(e_search_space,
                                   dataset,
@@ -106,7 +104,7 @@ def get_performance_distributions(e_search_space,
 
     distribution_time = round(time.time() - timestart, 2)
     add_config("time", "distribution_time", distribution_time)
-    add_config("results", f"best_{search_metric}", best_performance)
+    add_config("results", f"{search_metric}_of_best_sampled_model", best_performance)
 
     if (config["predictor"]["predictor_dataset_type"]) == "graph":
         return config['path']['predictor_dataset_folder']
@@ -115,7 +113,6 @@ def get_performance_distributions(e_search_space,
         dataset_file = f'{config["path"]["predictor_dataset_folder"]}/{config["dataset"]["dataset_name"]}-{config["param"]["budget"]} samples.csv'
         df.to_csv(dataset_file)
         return dataset_file
-
 
 def get_best_model(topk_list, option_decoder, dataset):
     torch.cuda.empty_cache()
@@ -138,10 +135,6 @@ def get_best_model(topk_list, option_decoder, dataset):
         sys.exit()
     print(f"\n {'=**=' * 15}  Training top-k models  {'=**=' * 15}")
     try:  # Recuperer le meilleur model present dans le dataset concu en phase 1
-        if metric_rule == "max":
-            Y = -99999999
-        elif metric_rule == 'min':
-            Y = 99999999
         for filename in glob.glob(config["path"]["predictor_dataset_folder"] + '/*'):
             data = torch.load(filename)
             data.y = data.y.view(-1, 1)
@@ -268,18 +261,19 @@ def get_option_maps(submodel):
 
 def run_model(submodel_config, train_data, val_data, in_chanels, num_class, epochs, numround=1, shared_weight=None,
               type_data="val"):
-    set_seed()
+
     search_metric = config["param"]["search_metric"]
     GNN_Model, train_model, test_model = get_train(config["dataset"]["type_task"])
     params_config = get_option_maps(submodel_config)
     params_config["in_channels"] = in_chanels
     params_config["num_class"] = num_class
+    set_seed()
     new_model = GNN_Model(params_config)
-    if shared_weight != None:
-        try:
-            new_model.load_state_dict(shared_weight)
-        except:
-            pass
+    # if shared_weight != None:
+    #     try:
+    #         new_model.load_state_dict(shared_weight)
+    #     except:
+    #         pass
     optimizer = params_config["optimizer"](new_model.parameters(),
                                            lr=params_config['lr'],
                                            weight_decay=params_config['weight_decay'])
@@ -287,7 +281,6 @@ def run_model(submodel_config, train_data, val_data, in_chanels, num_class, epoc
     performance_record = []
     test_performance_record = defaultdict(list)
     for i in range(numround):
-
         trainer = ddp_module(
             total_epochs=epochs,
             model_to_train=new_model,
@@ -295,7 +288,8 @@ def run_model(submodel_config, train_data, val_data, in_chanels, num_class, epoc
             train_data=train_data,
             criterion=criterion,
             model_trainer=train_model,
-            model_tester=test_model)
+            model_tester=test_model,
+            type_model='architecture')
 
         trainer.eval()
         performance_score = test_model(model=trainer,
