@@ -47,8 +47,8 @@ if __name__ == "__main__":
     # print(dataset)
 
     e_search_space,option_decoder,predictor_graph_edge_index = create_e_search_space(args.search_space_name)
-    performance_records_path = get_performance_distributions(e_search_space, dataset,predictor_graph_edge_index)
-    # performance_records_path = "data/predictor"
+    # performance_records_path = get_performance_distributions(e_search_space, dataset,predictor_graph_edge_index)
+    performance_records_path = "data/predictor"
     TopK_final = get_prediction(performance_records_path,e_search_space,predictor_graph_edge_index,option_decoder)
     best_model= get_best_model(TopK_final,option_decoder,dataset)
     total_search_time = round(time.time() - timestart, 2)
