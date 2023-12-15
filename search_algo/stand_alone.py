@@ -13,7 +13,7 @@ from GNN_models.graph_classification import *
 
 
 
-def get_test_performance(submodel, dataset, world_size=None):
+def get_test_performance(submodel, dataset):
     set_seed()
     search_metric = config["param"]["search_metric"]
     z_final= int(config["param"]["z_final"])
@@ -32,7 +32,7 @@ def get_test_performance(submodel, dataset, world_size=None):
                                   numround=z_final,
                                   shared_weight=None,
                                   type_data="test",
-                                  world_size=world_size)
+                                  type_model="real")
 
     for result, performance in model_performance.items():
         add_config("results", result, model_performance[result])

@@ -106,7 +106,7 @@ def prepare_data_loader(dataset, batch_size=32):
     return dataloader
 
     
-def ddp_module(total_epochs: int, model_to_train, optimizer, train_dataloader, test_dataloader,criterion, model_trainer, model_tester,type_model):
+def ddp_module(total_epochs: int, model_to_train, optimizer, train_dataloader, test_dataloader,criterion, model_trainer, model_tester,type_data,type_model):
     set_seed()
     accelerator=Accelerator()
     train_dataloader, test_dataloader, model,optimizer = accelerator.prepare(train_dataloader, test_dataloader,model_to_train,optimizer)
@@ -119,6 +119,5 @@ def ddp_module(total_epochs: int, model_to_train, optimizer, train_dataloader, t
                       accelerator=accelerator)
 
     return model
-
 
 

@@ -16,7 +16,7 @@ import torch.multiprocessing as mp
 
 def get_performance_distributions(e_search_space,
                                   dataset,
-                                  predictor_graph_edge_index, world_size=None):  # get performance distribution of s*n models (n = search space size)
+                                  predictor_graph_edge_index):  # get performance distribution of s*n models (n = search space size)
     set_seed()
 
     num_run_sample = int(config["param"]["z_sample"])
@@ -45,7 +45,7 @@ def get_performance_distributions(e_search_space,
         for key, value in submodel.items():
             submodel_config[key] = value[0]
 
-        model_performance = run_model(world_size=world_size,
+        model_performance = run_model(
                                       submodel_config=submodel_config,
                                       train_data=train_dataset,
                                       val_data=val_dataset,
@@ -53,7 +53,9 @@ def get_performance_distributions(e_search_space,
                                       num_class=num_class,
                                       epochs=epochs,
                                       numround=num_run_sample,
-                                      shared_weight=None)
+                                      shared_weight=None,
+                                      type_data="val",
+                                      type_model="architecture")
         print('Training finished')
         if metric_rule == "max":
             if model_performance > best_performance:
@@ -110,7 +112,7 @@ def get_performance_distributions(e_search_space,
         df.to_csv(dataset_file)
         return dataset_file
 
-def get_best_model(topk_list, option_decoder, dataset, world_size=None):
+def get_best_model(topk_list, option_decoder, dataset):
     torch.cuda.empty_cache()
     set_seed()
     search_metric = config["param"]["search_metric"]
@@ -174,7 +176,8 @@ def get_best_model(topk_list, option_decoder, dataset, world_size=None):
                                       epochs=epochs,
                                       numround=z_topk,
                                       shared_weight=best_loss_param_path,
-                                      world_size=world_size)
+                                      type_data="val",
+                                      type_model="architecture")
         predicted_performance.append(row[search_metric])
         true_performance.append(model_performance)
 
@@ -250,8 +253,8 @@ def get_option_maps(submodel):
     return model_config
 
 
-def run_model(world_size, submodel_config, train_data, val_data, in_chanels, num_class, epochs, numround=1, shared_weight=None,
-              type_data="val"):
+def run_model(submodel_config, train_data, val_data, in_chanels, num_class, epochs, numround=1, shared_weight=None,
+              type_data="val",type_model="architecture"):
 
     search_metric = config["param"]["search_metric"]
     GNN_Model, train_model, test_model = get_train(config["dataset"]["type_task"])
@@ -272,11 +275,12 @@ def run_model(world_size, submodel_config, train_data, val_data, in_chanels, num
                    model_to_train=new_model,
                    optimizer=optimizer,
                    train_dataloader=prepare_data_loader(train_data,batch_size=32),
-                    test_dataloader=prepare_data_loader(val_data,batch_size=32),
+                   test_dataloader=prepare_data_loader(val_data,batch_size=32),
                    criterion=criterion,
                    model_trainer=train_model,
                    model_tester=test_model,
-                   type_model="architecture" )
+                   type_data=type_data,
+                   type_model=type_model)
 
         trainer.eval()
         performance_score = test_model(model=trainer,

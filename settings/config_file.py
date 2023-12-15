@@ -11,7 +11,7 @@ from datetime import datetime
 # device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 # device = torch.device('cpu')
 num_workers = 8
-num_seed = 777
+num_seed = 42
 config = ConfigParser()
 Batch_Size = 96 * 3
 
@@ -62,7 +62,7 @@ def create_config_file(type_task, dataset_name):
         "train_ratio": 0.4,
         "nfcode": 56,  # number of digit for each function code when using embedding method
         "noptioncode": 8,
-        "sample_model_epochs": 2,
+        "sample_model_epochs": 200,
         "topk_model_epochs": 200,
         "best_model_epochs": 2000,
         "patience": 100,

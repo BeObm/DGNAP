@@ -11,6 +11,7 @@ from torch_geometric.loader import DataLoader
 from load_data.load_predictor_dataset import *
 from search_space_manager.search_space import *
 from search_space_manager.sample_models import *
+from search_algo.DDP import *
 from copy import deepcopy
 from predictor_models import *
 import importlib
@@ -66,16 +67,22 @@ def train_predictor_using_graph_dataset(predictor_dataset_folder):
         dim=dim,
         drop_out=drop_out,
         out_channels=1)
-
-    predictor_model.to(device)
-
     optim = map_predictor_optimizer(optimizer)
     optimizer = optim(predictor_model.parameters(),
                       lr=lr,
                       weight_decay=wd)
     criterion = map_predictor_criterion(config["predictor"]["criterion"])
+    best_predictor_model = ddp_module(total_epochs=num_epoch,
+                                      model_to_train=predictor_model,
+                                      optimizer=optimizer,
+                                      train_dataloader=train_loader,
+                                      test_dataloader=val_loader,
+                                      criterion=criterion,
+                                      model_trainer=train_predictor,
+                                      model_tester=test_predictor,
+                                      type_data="val",
+                                      type_model="predictor")
 
-    best_loss = 99999999
     c = 0
     for i in tqdm(range(num_epoch)):
         loss = train_predictor(predictor_model=predictor_model,

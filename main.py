@@ -29,12 +29,13 @@ if __name__ == "__main__":
     parser.add_argument("--search_metric", type=str, default="Accuracy_score", help="metric for search guidance")
     parser.add_argument("--predictor", type=str, default="GNN_performance", help="predictor type") # "GNN_ranking","GNN_performance"
     parser.add_argument("--predictor_criterion", type=str, default="MSELoss", help="loss function for predictor")
-    parser.add_argument("--world_size", type=str, default=2, help="Number of GPU")
+    parser.add_argument("--nb_gpu", type=str, default=2, help="Number of GPU")
     args = parser.parse_args()
     create_config_file(args.type_task,args.dataset)
     manage_budget()
     add_config("dataset", "dataset_name", args.dataset)
     add_config("param", "search_metric", args.search_metric)
+    add_config("param", "nb_gpu", args.nb_gpu)
     add_config("param", "search_space_reduction_strategy", args.sp_reduce)
     add_config("predictor", "Predictor_model", args.predictor)
     add_config("predictor", "criterion", args.predictor_criterion)
@@ -42,27 +43,32 @@ if __name__ == "__main__":
     create_paths()
     torch.cuda.empty_cache()
     timestart = time.time()
+    torch.cuda.empty_cache()
+    timestart = time.time()
     # torch.cuda.empty_cache()
     type_task = args.type_task
     dataset_name = args.dataset
-    dataset_root =config["dataset"]["dataset_root"]
-    print(f"{'**'*10} code running on {dataset_name} dataset for {args.type_task} task {'**'*10}")
-    
-    dataset=get_dataset(type_task,dataset_root,dataset_name)
+    dataset_root = config["dataset"]["dataset_root"]
+
+    print(f"{'**' * 10} code running on {dataset_name} dataset for {args.type_task} task {'**' * 10}")
+
+    dataset = get_dataset(type_task, dataset_root, dataset_name)
     # print(dataset)
 
-    e_search_space,option_decoder,predictor_graph_edge_index = create_e_search_space(args.search_space_name)
-    performance_records_path = get_performance_distributions(e_search_space=e_search_space,
-                                                             dataset=dataset,
-                                                             predictor_graph_edge_index=predictor_graph_edge_index,
-                                                             world_size=args.world_size)
+    e_search_space, option_decoder, predictor_graph_edge_index = create_e_search_space(args.search_space_name)
+    performance_records_path = get_performance_distributions(e_search_space, dataset,predictor_graph_edge_index)
     # performance_records_path = "data/predictor"
-    TopK_final = get_prediction(performance_records_path,e_search_space,predictor_graph_edge_index,option_decoder)
-    best_model= get_best_model(TopK_final,option_decoder,dataset,args.world_size)
+    search_start = time.time()
+    dataset_time_cost = round(search_start - timestart, 2)
+    add_config("time", "dataset_time_cost", dataset_time_cost)
+    TopK_final = get_prediction(performance_records_path, e_search_space, predictor_graph_edge_index, option_decoder)
+    best_model = get_best_model(TopK_final, option_decoder, dataset)
+    search_time = round(time.time() - search_start, 2)
     total_search_time = round(time.time() - timestart, 2)
+    add_config("time", "search_time", search_time)
     add_config("time", "total_search_time", total_search_time)
-    performance = get_test_performance(best_model,dataset)
-    write_results(best_model,performance)
+    performance = get_test_performance(best_model, dataset)
+    write_results(best_model, performance)
     # Generate_time_cost()
 
 

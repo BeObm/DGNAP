@@ -352,6 +352,8 @@ def map_optimizer(optimizers):
         return torch.optim.Adam
     elif optimizers =='sgd':
         return torch.optim.SGD
+    elif optimizers =='adamW':
+        return torch.optim.AdamW
     else:
         map_function_error(optimizers)
 

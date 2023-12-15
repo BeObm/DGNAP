@@ -20,10 +20,8 @@ def search_space_embeddings(sp, a=0, b=1):
     total_choices = 0
     t1 = 1
     max_option = 0
-    sp_size = 0
+    sp_size = len(sp.keys())
     for k, v in sp.items():
-        if len(v) > 1:
-            sp_size += 1
         t1 = t1 * len(v)
         total_choices = total_choices + len(v)
         if len(v) > max_option:
@@ -97,7 +95,7 @@ def create_spectral_gnap_gl_space():  # a<b
     sp['lr_f'] = [0.01, 0.001, 0.0005]
     sp['lr'] = [0.01, 0.001, 0.0005]
     sp['weight_decay'] = [0.001, 0.0001, 0.0005]
-    sp["optimizer"] = ["adam"]
+    sp["optimizer"] = ["adam","adamW"]
     sp['criterion'] = ['CrossEntropyLoss']  # "MultiMarginLoss"
     sp["graph_filter"] = ["sg", "bernnet", "chebynet", "arma", "appnp"]  # "",,"B-Spline",'appnp',"bernstein",
     e_search_space, option_decoder = search_space_embeddings(sp)
@@ -148,7 +146,7 @@ def create_spatial_gnap_gl_space():
     sp = {'gnnConv1': attention, 'gnnConv2': attention, 'aggregation1': agregation, 'aggregation2': agregation,
           'normalize1': normalizer, 'normalize2': normalizer, 'activation1': activation, 'activation2': activation,
           'hidden_channels': hidden_channels, 'dropout': dropout,
-          'lr': [0.1, 0.01, 0.001, 0.005], 'weight_decay': [0, 0.001, 0.0001], "optimizer": ["adam",'sgd'],
+          'lr': [0.1, 0.01, 0.001, 0.005], 'weight_decay': [0, 0.001, 0.0001], "optimizer": ["adam",'adamW'],
           'criterion': ["CrossEntropyLoss"],
           'pooling': ["global_add_pool", "global_max_pool", "global_mean_pool"]}
     e_search_space, option_decoder = search_space_embeddings(sp)
@@ -176,7 +174,7 @@ def create_spatial_gnap_nl_space():  # a<b
           'normalize1': normalizer, 'normalize2': normalizer, 'activation1': activation, 'activation2': activation,
           'multi_head1': multi_head, 'multi_head2': multi_head, 'hidden_channels1': hidden_channels,
           'hidden_channels2': hidden_channels, 'dropout1': dropout, 'dropout2': dropout,
-          'lr': [0.01, 0.001, 0.005, 0.0005], 'weight_decay': [0, 0.001, 0.0005], "optimizer": ["adam"],
+          'lr': [0.01, 0.001, 0.005, 0.0005], 'weight_decay': [0, 0.001, 0.0005], "optimizer": ["adam","adamW"],
           'criterion': ['CrossEntropyLoss']}
 
     e_search_space, option_decoder = search_space_embeddings(sp)
@@ -230,7 +228,7 @@ def create_baselines_gl_space(a=0, b=1):  # a<b
           'activation1': activation, 'activation2': activation, 'multi_head1': multi_head, 'multi_head2': multi_head,
           'hidden_channels1': hidden_channels, 'hidden_channels2': hidden_channels, 'dropout1': dropout,
           'dropout2': dropout, 'lr': [1e-2, 1e-3, 1e-4, 5e-3, 5e-4], 'weight_decay': [1e-3, 1e-4, 1e-5, 5e-5, 5e-4],
-          'criterion': ["MSELOSS"], 'pooling': ["global_add_pool", "global_mean_pool"], "optimizer": ["adam", "sgd"],
+          'criterion': ["MSELOSS"], 'pooling': ["global_add_pool", "global_mean_pool"], "optimizer": ["adam", "adamW"],
           'normalize1': ["False", "GraphNorm"], 'normalize2': ["False", "GraphNorm"]}
 
     e_search_space, option_decoder = search_space_embeddings(sp)
@@ -286,7 +284,7 @@ def create_baselines_nl_space(a=0, b=1):  # a<b
           'activation1': activation, 'activation2': activation, 'multi_head1': multi_head, 'multi_head2': multi_head,
           'hidden_channels1': hidden_channels, 'hidden_channels2': hidden_channels, 'dropout1': dropout,
           'dropout2': dropout, 'lr': [1e-2, 1e-3, 1e-4, 5e-3, 5e-4], 'weight_decay': [1e-3, 1e-4, 1e-5, 5e-5, 5e-4],
-          'criterion': ["fn_loss"], "optimizer": ["adam"], 'normalize1': ["False"], 'normalize2': ["False"]}
+          'criterion': ["fn_loss"], "optimizer": ["adam","adamW"], 'normalize1': ["False"], 'normalize2': ["False"]}
 
     e_search_space, option_decoder = search_space_embeddings(sp)
 
