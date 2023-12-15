@@ -89,15 +89,6 @@ def setup_process_group(rank, world_size):
     dist.init_process_group("gloo", rank=rank, world_size=world_size)
 
 
-def ddp_checkpoint_to_non_ddp_checkpoint(state_dict):
-    model_dict = OrderedDict()
-    pattern = re.compile('module.')
-    for k, v in state_dict.items():
-        if re.search("module", k):
-            model_dict[re.sub(pattern, '', k)] = v
-        else:
-            model_dict = state_dict
-    return model_dict
 
 
 
