@@ -1,6 +1,6 @@
-from dgl.data import FraudYelpDataset, FraudAmazonDataset
-from dgl.data.utils import load_graphs, save_graphs
-import dgl
+# from dgl.data import FraudYelpDataset, FraudAmazonDataset
+# from dgl.data.utils import load_graphs, save_graphs
+# import dgl
 import numpy as np
 import torch
 

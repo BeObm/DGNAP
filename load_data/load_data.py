@@ -18,7 +18,7 @@ from torch_geometric.datasets import TUDataset, PPI, Planetoid, Coauthor, Amazon
 from settings.config_file import *
 from scipy.io import loadmat
 import pickle
-import dgl
+
 import torch.nn.functional as F
 import argparse
 import time

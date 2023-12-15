@@ -15,7 +15,7 @@ from settings.config_file import Batch_Size
 from torch.utils.data import Dataset
 from settings.config_file import *
 import torch.multiprocessing as mp
-from accelerate import Accelerator
+
 
 class Trainer:
     def __init__(
@@ -37,7 +37,7 @@ class Trainer:
         self.criterion = criterion
         self.train_model = train_model
         self.model_tester = model_tester
-        self.type_model=type_model
+        self.type_model = type_model
         self.best_model = None
         print(f"GPU id is {self.gpu_id}")
 
@@ -45,7 +45,6 @@ class Trainer:
         if self.gpu_id == 0:
             pytorch_total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
             print(f"total number of parameter={pytorch_total_params}")
-
 
     def train(self, total_epochs: int):
         best_model = None
@@ -83,6 +82,7 @@ class Trainer:
             dist.barrier()
         return self.model
 
+
 def setup_process_group(rank, world_size):
     os.environ['MASTER_ADDR'] = 'localhost'
     os.environ['MASTER_PORT'] = '12355'
@@ -100,25 +100,51 @@ def ddp_checkpoint_to_non_ddp_checkpoint(state_dict):
     return model_dict
 
 
+def prepare_data_loader(dataset, rank, world_size, batch_size=32, pin_memory=False, num_workers=0):
+    sampler = DistributedSampler(dataset, num_replicas=world_size, rank=rank, shuffle=False, drop_last=False)
 
-def prepare_data_loader(dataset, batch_size=32):
-    dataloader = DataLoader(dataset, batch_size=batch_size,drop_last=False, shuffle=False)
+    dataloader = DataLoader(dataset, batch_size=batch_size, pin_memory=pin_memory, num_workers=num_workers,
+                            drop_last=False, shuffle=False, sampler=sampler)
     return dataloader
 
-    
-def ddp_module(total_epochs: int, model_to_train, optimizer, train_dataloader, test_dataloader,criterion, model_trainer, model_tester,type_model):
+
+def cleanup():
+    dist.destroy_process_group()
+
+
+def ddp_module(rank, world_size, total_epochs: int, model_to_train, optim, lr, wd, dataset, criterion, model_trainer,
+               model_tester, type_model):
     set_seed()
-    accelerator=Accelerator()
-    train_dataloader, test_dataloader, model,optimizer = accelerator.prepare(train_dataloader, test_dataloader,model_to_train,optimizer)
-    model.train()
+    # setup the process groups
+    setup_process_group(rank=rank, world_size=world_size)
+
+    # prepare the dataloader
+    dataloader = prepare_data_loader(dataset=dataset, rank=rank, world_size=world_size, batch_size=Batch_Size)
+
+    # instantiate the model(it's your own model) and move it to the right device
+    model = model_to_train.to(rank)
+
+    # wrap the model with DDP
+    model = DDP(model, device_ids=[rank], output_device=rank, find_unused_parameters=True)
+    best_loss = 99999
+    if rank == 0:
+        print(f"Start training in distributed environment with {world_size} GPUs")
+
+    optimizer = optim(model.module.parameters(), lr=lr, weight_decay=wd)
     for epoch in range(total_epochs):
-        model_trainer(model=model,
-                      dataloader=train_dataloader,
-                      criterion=criterion,
-                      optimizer=optimizer,
-                      accelerator=accelerator)
+        # tell DistributedSampler which epoch this is
+        dataloader.sampler.set_epoch(epoch)
+        loss = model_trainer(model=model,
+                             dataloader=dataloader,
+                             criterion=criterion,
+                             optimizer=optimizer,
+                             rank=rank)
 
-    return model
+        if rank == 0:
+            if loss < best_loss:
+                torch.save(model, weight_path)
 
-
+    cleanup()
+    if rank == 0:
+        return model
 

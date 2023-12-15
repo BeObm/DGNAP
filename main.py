@@ -13,10 +13,14 @@ import time
 from settings.config_file import *
 import argparse
 
+def setup_process_group(rank, world_size):
+    os.environ['MASTER_ADDR'] = 'localhost'
+    os.environ['MASTER_PORT'] = '12355'
+    dist.init_process_group("nccl", rank=rank, world_size=world_size)
+
 if __name__ == "__main__":
     set_seed()
-    init_process_group(backend="gloo")
-    torch.cuda.set_device(int(os.environ["LOCAL_RANK"]))
+
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset", help="Dataset name", default="ENZYMES")
     parser.add_argument("--type_task", help="type_task name", default="graph_classification", choices=["graph_anomaly", "graph_classification", "graph_regression","node_classification"])
@@ -25,6 +29,7 @@ if __name__ == "__main__":
     parser.add_argument("--search_metric", type=str, default="Accuracy_score", help="metric for search guidance")
     parser.add_argument("--predictor", type=str, default="GNN_performance", help="predictor type") # "GNN_ranking","GNN_performance"
     parser.add_argument("--predictor_criterion", type=str, default="MSELoss", help="loss function for predictor")
+    parser.add_argument("--world_size", type=str, default=2, help="Number of GPU")
     args = parser.parse_args()
     create_config_file(args.type_task,args.dataset)
     manage_budget()
@@ -47,12 +52,17 @@ if __name__ == "__main__":
     # print(dataset)
 
     e_search_space,option_decoder,predictor_graph_edge_index = create_e_search_space(args.search_space_name)
-    # performance_records_path = get_performance_distributions(e_search_space, dataset,predictor_graph_edge_index)
-    performance_records_path = "data/predictor"
+    performance_records_path = get_performance_distributions(e_search_space=e_search_space,
+                                                             dataset=dataset,
+                                                             predictor_graph_edge_index=predictor_graph_edge_index,
+                                                             world_size=args.world_size)
+    # performance_records_path = "data/predictor"
     TopK_final = get_prediction(performance_records_path,e_search_space,predictor_graph_edge_index,option_decoder)
-    best_model= get_best_model(TopK_final,option_decoder,dataset)
+    best_model= get_best_model(TopK_final,option_decoder,dataset,args.world_size)
     total_search_time = round(time.time() - timestart, 2)
     add_config("time", "total_search_time", total_search_time)
     performance = get_test_performance(best_model,dataset)
     write_results(best_model,performance)
     # Generate_time_cost()
+
+

@@ -36,8 +36,7 @@ def search_space_embeddings(sp, a=0, b=1):
     add_config("search_space", "final_total_choices", total_choices)
     add_config("search_space", "final_size", t1)
 
-    print(
-        f'The search space has {sp_size} Components, a total of {total_choices} choices and {t1} possible GNN models.')
+    print(f'The search space has {sp_size} Components, a total of {total_choices} choices and {t1} possible GNN models.')
 
     for function, options_list in sp.items():
         embeddings_dict[function] = {}
@@ -65,6 +64,7 @@ def search_space_embeddings(sp, a=0, b=1):
                     option_encoding = fcode + [random.randint(a, b) for num in range(0, noptioncode)]
                     i += 1
                     while option_encoding in option_code_list:
+
                         print("option encoding alredy exist")
                         option_encoding = fcode + [random.randint(a, b) for num in range(0, noptioncode)]
                     option_code_list.append(option_encoding)
@@ -141,32 +141,25 @@ def create_spectral_gnap_gl_space():  # a<b
 def create_spatial_gnap_gl_space():
     attention = ["GCNConv", "GENConv", "SGConv", "linear", "GraphConv", "GATConv"]
     agregation = ['add', "max", "mean"]
-    activation = ["Relu", "Elu", "linear", "Softplus", "sigmoid", "tanh", "relu6"]
-    multi_head = [1]
-    hidden_channels = [16, 64, 128]
-    normalizer = [False, "GraphNorm", "InstanceNorm"]
-    dropout = [0.0, 0.3, 0.5, 0.7]
+    activation = ["Relu", "Elu", "linear", "Softplus", "sigmoid", "tanh", "relu6","leaky_relu"]
+    hidden_channels = [16, 32, 64, 128,256]
+    normalizer = [False, "GraphNorm", "InstanceNorm","BatchNorm"]
+    dropout = [0.0, 0.2, 0.4, 0.6]
     sp = {'gnnConv1': attention, 'gnnConv2': attention, 'aggregation1': agregation, 'aggregation2': agregation,
           'normalize1': normalizer, 'normalize2': normalizer, 'activation1': activation, 'activation2': activation,
-          'multi_head1': multi_head, 'multi_head2': multi_head, 'hidden_channels1': hidden_channels,
-          'hidden_channels2': hidden_channels, 'dropout1': dropout, 'dropout2': dropout,
-          'lr': [0.01, 0.001, 0.005, 0.0005], 'weight_decay': [0, 0.001, 0.0005], "optimizer": ["adam", "sgd"],
-          'criterion': ["fn_loss", "CrossEntropyLoss"],
+          'hidden_channels': hidden_channels, 'dropout': dropout,
+          'lr': [0.1, 0.01, 0.001, 0.005], 'weight_decay': [0, 0.001, 0.0001], "optimizer": ["adam",'sgd'],
+          'criterion': ["CrossEntropyLoss"],
           'pooling': ["global_add_pool", "global_max_pool", "global_mean_pool"]}
     e_search_space, option_decoder = search_space_embeddings(sp)
 
-    edge_dict = {'gnnConv1': ["normalize1", 'dropout1', 'activation1'], 'aggregation1': ["gnnConv1"],
-                 'multi_head1': ["gnnConv1"], 'hidden_channels1': ["gnnConv1"],
-                 'normalize1': ["dropout1", 'activation1'], 'dropout1': ["activation1"], 'activation1': ["gnnConv2"],
-                 'gnnConv2': ["normalize2", 'dropout2', 'activation2'], 'aggregation2': ["gnnConv2"],
-                 'multi_head2': ["gnnConv2"], 'hidden_channels2': ["gnnConv2"],
-                 'normalize2': ["dropout2", 'activation2'], 'dropout2': ["activation2"], 'mlp_layer': ["graph_filter"],
-                 'hidden_channels': ["mlp_layer", "graph_filter"], 'activation': ["mlp_layer"],
-                 'graph_filter': ["attention"], 'num_graph_filters': ["attention"], 'num_signals': ["graph_filter"],
-                 'aggregation': ["graph_filter"], 'normalization': ["graph_filter"], 'lr_f': ["graph_filter"],
-                 'attention': ["criterion", "dropout"], 'lr': ["criterion", "weight_decay"],
-                 'weight_decay': ["criterion", "lr"], 'dropout': ["mlp_layer"], 'activation2': ["pooling"],
-                 'pooling': ['criterion'], "criterion": ["optimizer"], "optimizer": []}
+    edge_dict = {'gnnConv1': ["normalize1", 'activation1'], 'aggregation1': ["gnnConv1"],
+                 'hidden_channels': ["gnnConv1", "gnnConv2"],
+                 'normalize1': ['activation1'], 'activation1': ["gnnConv2"],'activation2': ["pooling"],
+                 'gnnConv2': ["normalize2", 'activation2'], 'aggregation2': ["gnnConv2"],
+                 'normalize2': ['activation2'],'lr': [],'weight_decay': [],
+                 'optimizer': ["weight_decay", "lr", "criterion"], 'dropout': ["pooling"],
+                 'pooling': ['criterion'], "criterion": ["optimizer"]}
 
     return e_search_space, option_decoder, edge_dict
 
@@ -184,7 +177,7 @@ def create_spatial_gnap_nl_space():  # a<b
           'multi_head1': multi_head, 'multi_head2': multi_head, 'hidden_channels1': hidden_channels,
           'hidden_channels2': hidden_channels, 'dropout1': dropout, 'dropout2': dropout,
           'lr': [0.01, 0.001, 0.005, 0.0005], 'weight_decay': [0, 0.001, 0.0005], "optimizer": ["adam"],
-          'criterion': ['MSELoss']}
+          'criterion': ['CrossEntropyLoss']}
 
     e_search_space, option_decoder = search_space_embeddings(sp)
 
@@ -225,7 +218,7 @@ def create_spatial_gnap_nl_space():  # a<b
     return e_search_space, option_decoder, edge_dict
 
 
-def create_graphnas_gl_space(a=0, b=1):  # a<b
+def create_baselines_gl_space(a=0, b=1):  # a<b
 
     attention = ["GCNConv", "GENConv", "linear", "SGConv", 'LEConv', 'ClusterGCNConv', "GATConv"]
     agregation = ['add', "max", "mean"]
@@ -281,7 +274,7 @@ def create_graphnas_gl_space(a=0, b=1):  # a<b
     return e_search_space, option_decoder, edge_dict
 
 
-def create_graphnas_nl_space(a=0, b=1):  # a<b
+def create_baselines_nl_space(a=0, b=1):  # a<b
 
     attention = ["GCNConv", "GENConv", "linear", "SGConv", 'LEConv', 'ClusterGCNConv', "GATConv"]
     agregation = ['add', "max", "mean"]
