@@ -16,6 +16,7 @@ from torch.utils.data import Dataset
 from settings.config_file import *
 import torch.multiprocessing as mp
 from accelerate import Accelerator
+from accelerate import DistributedDataParallelKwargs
 
 class Trainer:
     def __init__(
@@ -92,15 +93,15 @@ def setup_process_group(rank, world_size):
 
 
 
-def prepare_data_loader(dataset, batch_size=32):
-    dataloader = DataLoader(dataset, batch_size=batch_size,drop_last=False, shuffle=False)
+def prepare_data_loader(dataset, batch_size=32,shuffle=False):
+    dataloader = DataLoader(dataset, batch_size=batch_size,drop_last=False, shuffle=shuffle)
     return dataloader
 
     
-def ddp_module(total_epochs: int, model_to_train, optimizer, train_dataloader, test_dataloader,criterion, model_trainer, model_tester,type_data,type_model):
+def ddp_module(accelerator, total_epochs: int, model_to_train, optimizer, train_dataloader,criterion, model_trainer):
     set_seed()
-    accelerator=Accelerator()
-    train_dataloader, test_dataloader, model,optimizer = accelerator.prepare(train_dataloader, test_dataloader,model_to_train,optimizer)
+
+    train_dataloader, model,optimizer = accelerator.prepare(train_dataloader,model_to_train,optimizer)
     model.train()
     for epoch in range(total_epochs):
         model_trainer(model=model,
@@ -111,4 +112,15 @@ def ddp_module(total_epochs: int, model_to_train, optimizer, train_dataloader, t
 
     return model
 
+ #
+    # accelerator.wait_for_everyone()
+    # unwrapped_model = accelerator.unwrap_model(model)
+    # accelerator.save(unwrapped_model.state_dict(), filename)
 
+ # base_model = (model.module if isinstance(model, DistributedDataParallel) else model)
+ #        checkpoint_dir = tempfile.mkdtemp()
+ #        torch.save(
+ #            {"model_state_dict": base_model.state_dict()},
+ #            os.path.join(checkpoint_dir, "model.pt"),
+ #        )
+ #        checkpoint = Checkpoint.from_directory(checkpoint_dir)

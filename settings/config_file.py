@@ -54,17 +54,17 @@ def create_config_file(type_task, dataset_name):
         "project_dir": project_root_dir,
         'config_filename': config_filename,
         "run_code": RunCode,
-        "budget": 800,
-        "k": 100,
+        "budget": 80,
+        "k": 10,
         "z_sample": 1,  # Number of time  sampled models are trained before we report their performance
         "z_topk": 1,
         "z_final": 2,
         "train_ratio": 0.4,
         "nfcode": 56,  # number of digit for each function code when using embedding method
         "noptioncode": 8,
-        "sample_model_epochs": 200,
-        "topk_model_epochs": 200,
-        "best_model_epochs": 2000,
+        "sample_model_epochs": 50,
+        "topk_model_epochs": 50,
+        "best_model_epochs": 50,
         "patience": 100,
         'search_metric': "roc_auc",  # matthews_corr_coef, balanced_accuracy_score, accuracy_score, roc_auc, auc_pr
         'best_search_metric_rule': "max",  # max
@@ -95,7 +95,8 @@ def create_config_file(type_task, dataset_name):
         "num_epoch": 500,
         "criterion": "MSELoss",  # , [MSELoss,]  [PairwiseLoss, MarginRankingLoss]
         "optimizer": "adam",
-        "patience": 50
+        "patience": 50,
+        "best_loss":0
     }
 
     config["time"] = {

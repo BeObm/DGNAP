@@ -15,27 +15,25 @@ from GNN_models.graph_classification import *
 
 def get_test_performance(submodel, dataset):
     set_seed()
-    search_metric = config["param"]["search_metric"]
     z_final= int(config["param"]["z_final"])
     epochs= int(config["param"]["best_model_epochs"])
     timestart = time.time()
     
     print(f'\n Getting final performance  on test dataset')
-    train_loader, val_loader, test_loader, in_channels, num_class = load_dataset(dataset)
+    train_dataset, val_dataset, test_dataset, in_channels, num_class = load_dataset(dataset)
 
+    print(f"This is the model config:  | {submodel}")
     model_performance = run_model(submodel_config=submodel,
-                                  train_data=train_loader,
-                                  val_data=test_loader,
+                                  train_data=train_dataset,
+                                  test_data=test_dataset,
                                   in_chanels=in_channels,
                                   num_class=num_class,
                                   epochs=epochs,
                                   numround=z_final,
                                   shared_weight=None,
-                                  type_data="test",
-                                  type_model="real")
+                                  type_data="test")
 
     for result, performance in model_performance.items():
         add_config("results", result, model_performance[result])
 
     return model_performance
-

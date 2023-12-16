@@ -58,8 +58,9 @@ def train_predictor_using_graph_dataset(predictor_dataset_folder):
     wd = float(config["predictor"]["wd"])
     num_epoch = int(config["predictor"]["num_epoch"])
     start_train_time = time.time()
-    train_loader, val_loader, feature_size = load_predictor_dataset(predictor_dataset_folder)
-
+    train_data, val_data, feature_size = load_predictor_dataset(predictor_dataset_folder)
+    ddp_kwargs = DistributedDataParallelKwargs(find_unused_parameters=True)
+    accelerator = Accelerator(kwargs_handlers=[ddp_kwargs])
     predictor, train_predictor, test_predictor = get_PredictorModel(config["predictor"]["Predictor_model"])
     set_seed()
     predictor_model = predictor(
@@ -72,48 +73,34 @@ def train_predictor_using_graph_dataset(predictor_dataset_folder):
                       lr=lr,
                       weight_decay=wd)
     criterion = map_predictor_criterion(config["predictor"]["criterion"])
-    best_predictor_model = ddp_module(total_epochs=num_epoch,
+    save_path=f"{config['path']['result_folder']}/predictor_model_weight.pt"
+    best_predictor_model = ddp_module(accelerator=accelerator,
+                                      total_epochs=num_epoch,
                                       model_to_train=predictor_model,
                                       optimizer=optimizer,
-                                      train_dataloader=train_loader,
-                                      test_dataloader=val_loader,
+                                      train_dataloader=prepare_data_loader(train_data,batch_size=Batch_Size),
                                       criterion=criterion,
-                                      model_trainer=train_predictor,
-                                      model_tester=test_predictor,
-                                      type_data="val",
-                                      type_model="predictor")
+                                      model_trainer=train_predictor)
 
-    c = 0
-    for i in tqdm(range(num_epoch)):
-        loss = train_predictor(predictor_model=predictor_model,
-                               train_loader=train_loader,
-                               criterion=criterion,
-                               optimizer=optimizer)
-
-        if loss < best_loss:
-            best_loss = loss
-            best_predictor_model = copy.deepcopy(predictor_model)
-
-        else:
-            c += 1
-            if c == int(config["predictor"]['patience']):
-                break
-
-    add_config("predictor", "best_loss", round(best_loss, 6))
+    unwrapped_model = accelerator.unwrap_model(best_predictor_model)
+    accelerator.save(unwrapped_model.state_dict(), save_path)
+    # add_config("predictor", "best_loss", round(best_loss, 6))
     metrics_list = map_predictor_metrics()
-    predictor_performance = test_predictor(model=best_predictor_model,
-                                           test_loader=train_loader,
+    predictor_performance = test_predictor(accelerator=accelerator,
+                                           model=best_predictor_model,
+                                           test_loader=accelerator.prepare(prepare_data_loader(train_data)),
                                            metrics_list=metrics_list,
                                            title="Predictor training test")
-    torch.save(best_predictor_model, f"{config['path']['result_folder']}/'predictor_model_weight.pt'")
+
     for metric, value in predictor_performance.items():
         add_config("results", f"{metric}_train", value)
         print(f"{metric}_train: {value}")
     print(f"Neural predictor training completed in {round((time.time() - start_train_time) / 60, 3)} minutes \n")
     add_config("time", "predictor_training_time", (time.time() - start_train_time))
 
-    predictor_performance = test_predictor(model=best_predictor_model,
-                                           test_loader=val_loader,
+    predictor_performance = test_predictor(accelerator=accelerator,
+                                           model=best_predictor_model,
+                                           test_loader=accelerator.prepare(prepare_data_loader(val_data)),
                                            metrics_list=metrics_list,
                                            title="Predictor validation test")
     for metric, value in predictor_performance.items():
@@ -140,7 +127,9 @@ def predict_and_rank(e_search_space, predictor_graph_edge_index, feature_size):
             dim=dim,
             drop_out=drop_out,
             out_channels=1)
-        predictor_model = torch.load(f"{config['path']['result_folder']}/'predictor_model_weight.pt'").to(device)
+        model_weigth_path = f"{config['path']['result_folder']}/predictor_model_weight.pt"
+        predictor_model.load_state_dict(torch.load(model_weigth_path))
+        predictor_model = predictor_model.to(device)
         predictor_model.eval()
     except:
         raise ValueError("Wrong pre-trained predictor weight")
@@ -198,13 +187,18 @@ def feat_coef_reduce_and_rank(e_search_space, predictor_graph_edge_index,
             dim=dim,
             drop_out=drop_out,
             out_channels=1)
-        predictor_model = torch.load(f"{config['path']['result_folder']}/'predictor_model_weight.pt'").to(device)
+        model_weigth_path = f"{config['path']['result_folder']}/predictor_model_weight.pt"
+        predictor_model.load_state_dict(torch.load(model_weigth_path))
+        predictor_model=predictor_model.to(device)
         predictor_model.eval()
     except:
         raise ValueError("Wrong pre-trained predictor path")
     base_space = deepcopy(e_search_space)
     total_importance = []
     train_loader, val_loader, feature_size = load_predictor_dataset(predictor_dataset_folder)
+    pred_Batch_Size = int(config["predictor"]["pred_Batch_Size"])
+    train_loader = DataLoader(train_loader, batch_size=pred_Batch_Size, shuffle=True)
+    val_loader = DataLoader(val_loader, batch_size=pred_Batch_Size, shuffle=False)
     criterion = map_predictor_criterion(config["predictor"]["criterion"])
 
     for i in [train_loader, val_loader]:
@@ -288,11 +282,8 @@ def compute_gradient_feature_importance(model, sample_dataset, criterion):
     for data in sample_dataset:
         data.x.requires_grad_(True)
         optimizer = optim.SGD([data.x], lr=0.01)
-        data.x = data.x.to(device)
-        data.edge_index = data.edge_index.to(device)
-        data.batch = data.batch.to(device)
-        data.y = data.y.to(device)
-        output = model(data.x, data.edge_index, data.batch)
+        data = data.to(device)
+        output = model(data)
         loss = criterion(output, data.y)
         # Backward pass to compute gradients
         optimizer.zero_grad()
@@ -313,12 +304,14 @@ def prob_reduce_and_rank(e_search_space, predictor_graph_edge_index, feature_siz
     # Load predictor model and weights
     try:
         model, train_predictor, test_predictor = get_PredictorModel(config["predictor"]["Predictor_model"])
-        # predictor_model = model(
-        #     in_channels=feature_size,
-        #     dim=dim,
-        #     drop_out=drop_out,
-        #     out_channels=1)
-        predictor_model = torch.load(f"{config['path']['result_folder']}/'predictor_model_weight.pt'").to(device)
+        predictor_model = model(
+             in_channels=feature_size,
+             dim=dim,
+             drop_out=drop_out,
+            out_channels=1)
+        model_weigth_path = f"{config['path']['result_folder']}/predictor_model_weight.pt"
+        predictor_model.load_state_dict(torch.load(model_weigth_path))
+        predictor_model = predictor_model.to(device)
         predictor_model.eval()
     except:
         raise ValueError("Wrong pre-trained predictor path")
@@ -439,7 +432,9 @@ def gradient_reduce_and_rank(e_search_space, predictor_graph_edge_index, feature
             dim=dim,
             drop_out=drop_out,
             out_channels=1)
-        predictor_model = torch.load(f"{config['path']['result_folder']}/'predictor_model_weight.pt'").to(device)
+        model_weigth_path = f"{config['path']['result_folder']}/predictor_model_weight.pt"
+        predictor_model.load_state_dict(torch.load(model_weigth_path))
+        predictor_model = predictor_model.to(device)
         predictor_model.eval()
     except:
         raise ValueError("Wrong pre-trained predictor path")
@@ -559,7 +554,9 @@ def prob_reduce_and_rank(e_search_space, predictor_graph_edge_index, feature_siz
             dim=dim,
             drop_out=drop_out,
             out_channels=1)
-        predictor_model = torch.load(f"{config['path']['result_folder']}/'predictor_model_weight.pt'").to(device)
+        model_weigth_path = f"{config['path']['result_folder']}/predictor_model_weight.pt"
+        predictor_model.load_state_dict(torch.load(model_weigth_path))
+        predictor_model = predictor_model.to(device)
         predictor_model.eval()
     except:
         raise ValueError("Wrong pre-trained predictor path")
@@ -676,10 +673,8 @@ def predict_neural_performance_using_gnn(model, graphLoader):
     for data in graphLoader:
         performance = []
         i += 1
-        data.x = data.x.to(device)
-        data.edge_index = data.edge_index.to(device)
-        data.batch = data.batch.to(device)
-        pred = model(data.x, data.edge_index, data.batch)
+        data = data.to(device)
+        pred = model(data)
         performance = np.append(performance, pred.cpu().detach().numpy())
         choices = deepcopy(data.model_config_choices)
         choice = []

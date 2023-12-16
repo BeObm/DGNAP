@@ -3,6 +3,9 @@
 import sys
 import statistics as stat
 from copy import deepcopy
+
+from torch.nn.parallel import DistributedDataParallel
+
 from predictor_models.utils import *
 from torch_geometric.data import Data
 from search_space_manager.sample_models import *
@@ -48,14 +51,13 @@ def get_performance_distributions(e_search_space,
         model_performance = run_model(
                                       submodel_config=submodel_config,
                                       train_data=train_dataset,
-                                      val_data=val_dataset,
+                                      test_data=val_dataset,
                                       in_chanels=in_channels,
                                       num_class=num_class,
                                       epochs=epochs,
                                       numround=num_run_sample,
                                       shared_weight=None,
-                                      type_data="val",
-                                      type_model="architecture")
+                                      type_data="val")
         print('Training finished')
         if metric_rule == "max":
             if model_performance > best_performance:
@@ -170,14 +172,13 @@ def get_best_model(topk_list, option_decoder, dataset):
         sys.stdout.write(f"Architecture {num_model}/{len(topk_list)}:{[dict_model[opt] for opt in dict_model.keys()]} ")
         model_performance = run_model(submodel_config=dict_model,
                                       train_data=train_dataset,
-                                      val_data=val_dataset,
+                                      test_data=val_dataset,
                                       in_chanels=in_channels,
                                       num_class=num_class,
                                       epochs=epochs,
                                       numround=z_topk,
                                       shared_weight=best_loss_param_path,
-                                      type_data="val",
-                                      type_model="architecture")
+                                      type_data="val")
         predicted_performance.append(row[search_metric])
         true_performance.append(model_performance)
 
@@ -253,9 +254,10 @@ def get_option_maps(submodel):
     return model_config
 
 
-def run_model(submodel_config, train_data, val_data, in_chanels, num_class, epochs, numround=1, shared_weight=None,
-              type_data="val",type_model="architecture"):
-
+def run_model(submodel_config, train_data, test_data, in_chanels,
+              num_class, epochs, numround=1, shared_weight=None, type_data="val"):
+    ddp_kwargs = DistributedDataParallelKwargs(find_unused_parameters=True)
+    accelerator = Accelerator(kwargs_handlers=[ddp_kwargs])
     search_metric = config["param"]["search_metric"]
     GNN_Model, train_model, test_model = get_train(config["dataset"]["type_task"])
     params_config = get_option_maps(submodel_config)
@@ -271,21 +273,19 @@ def run_model(submodel_config, train_data, val_data, in_chanels, num_class, epoc
     performance_record = []
     test_performance_record = defaultdict(list)
     for i in range(numround):
-        trainer = ddp_module(total_epochs=epochs,
+        trainer = ddp_module(accelerator= accelerator,
+                   total_epochs=epochs,
                    model_to_train=new_model,
                    optimizer=optimizer,
-                   train_dataloader=prepare_data_loader(train_data,batch_size=32),
-                   test_dataloader=prepare_data_loader(val_data,batch_size=32),
+                   train_dataloader=prepare_data_loader(train_data,batch_size=Batch_Size,shuffle=True),
                    criterion=criterion,
-                   model_trainer=train_model,
-                   model_tester=test_model,
-                   type_data=type_data,
-                   type_model=type_model)
+                   model_trainer=train_model)
 
+        # trainer = (trainer.module if isinstance(trainer, DistributedDataParallel) else trainer)
         trainer.eval()
         performance_score = test_model(model=trainer,
-                                       test_loader=val_data,
-                                       devise=torch.device("cuda:0"),
+                                       test_loader=accelerator.prepare(prepare_data_loader(test_data)),
+                                       accelerator=accelerator,
                                        type_data=type_data)
         performance_record.append(performance_score[search_metric])
         if type_data == "test":

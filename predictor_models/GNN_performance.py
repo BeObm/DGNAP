@@ -26,8 +26,8 @@ class Predictor(MessagePassing):
         self.linear = Linear(dim, 64)
         self.linear2 = Linear(64, out_channels)
 
-    def forward(self, x, edge_index, batch):
-        # x, edge_index, batch= data.x, data.edge_index, data.batch
+    def forward(self, data):
+        x, edge_index, batch= data.x, data.edge_index, data.batch
 
         x = self.conv1(x, edge_index)
         x = F.dropout(x, p=self.drop_out, training=self.training)
@@ -44,37 +44,34 @@ class Predictor(MessagePassing):
         return x
 
 
-def train_predictor(predictor_model, train_loader, criterion, optimizer):
-    predictor_model.train()
+def train_predictor(model, dataloader, criterion, optimizer,accelerator):
+    model.train()
 
     total_loss = 0
-    for data in train_loader:
-        data.x = data.x.to(device)
-        data.edge_index = data.edge_index.to(device)
-        data.batch = data.batch.to(device)
-        data.y = data.y.to(device)
+    for data in dataloader:
+        targets=data.y
         optimizer.zero_grad()
-        output = predictor_model(data.x, data.edge_index, data.batch)
-        loss = criterion(output, data.y)
-
-        loss.backward()
-
+        output = model(data)
+        loss = criterion(output,targets)
+        accelerator.backward(loss)
         total_loss += loss.item() * data.num_graphs
         optimizer.step()
     return loss.item()
 
 
 @torch.no_grad()
-def test_predictor(model, test_loader, metrics_list, title):
+def test_predictor(accelerator, model, test_loader, metrics_list, title):
     model.eval()
     ped_list, label_list = [], []
     for data in test_loader:
-        data.x = data.x.to(device)
-        data.edge_index = data.edge_index.to(device)
-        data.batch = data.batch.to(device)
-        pred = model(data.x, data.edge_index, data.batch)
-        ped_list = np.append(ped_list, pred.cpu().detach().numpy())
-        label_list = np.append(label_list, data.y.cpu().detach().numpy())
+        targets = data.y
+        pred = model(data)
+
+        all_targets = accelerator.gather(targets)
+        all_pred = accelerator.gather(pred)
+
+        ped_list = np.append(ped_list, all_pred.cpu().detach().numpy())
+        label_list = np.append(label_list, all_targets.cpu().detach().numpy())
     predictor_performance = evaluate_model_predictor(label_list, ped_list, metrics_list, title)
 
     return predictor_performance

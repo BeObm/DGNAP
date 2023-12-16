@@ -159,16 +159,18 @@ def train_function(model, dataloader, criterion, optimizer,accelerator):
 
 
 @torch.no_grad()
-def test_function(model, test_loader,devise,type_data="val"):
+def test_function(accelerator, model, test_loader, type_data="val"):
     model.eval()
     true_labels = []
     pred_labels = []
 
     for data in test_loader:  # Iterate in batches over the training/test dataset.
-        data = data.to(devise)
+        targets= data.y
         pred = model(data).max(dim=1)[1]
-        true_labels.extend(data.y.detach().cpu().numpy())
-        pred_labels.extend(pred.detach().cpu().numpy())
+        all_targets =accelerator.gather(targets)
+        all_pred = accelerator.gather(pred)
+        true_labels.extend(all_targets.detach().cpu().numpy())
+        pred_labels.extend(all_pred.detach().cpu().numpy())
     performance_scores = evaluate_model(true_labels, pred_labels,type_data)
 
     return performance_scores
