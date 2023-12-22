@@ -12,6 +12,7 @@ from GNN_models.node_classification import *
 from GNN_models.graph_classification import *
 
 
+
 def get_test_performance(submodel, dataset):
     set_seed()
     z_final= int(config["param"]["z_final"])

@@ -13,11 +13,9 @@ from load_data.load_data import load_dataset
 from GNN_models.graph_classification import *
 from settings.config_file import *
 import importlib
-from accelerate import Accelerator
 from search_algo.DDP import *
 from tqdm.auto import tqdm
 import torch.multiprocessing as mp
-
 
 def get_performance_distributions(e_search_space,
                                   dataset,
@@ -30,6 +28,7 @@ def get_performance_distributions(e_search_space,
     n_sample = int(config["param"]["N"])
     search_metric = config["param"]["search_metric"]
     list_of_choice=get_list_of_choice(e_search_space)
+    print(f"The search space size is {len(list_of_choice)} | {list_of_choice}")
     timestart = time.time()
     print(f' \n  {"#" * 10} Getting {search_metric}  of  {n_sample} models {"#" * 10} \n')
     best_performance =get_initial_best_performance()
@@ -75,27 +74,26 @@ def get_performance_distributions(e_search_space,
                 best_sample[search_metric] = best_performance
 
         else:
-           print(f"{'++' * 10} {metric_rule} is an invalid rule. Metric rule should be 'min' or 'max'{'++' * 10}")
-           sys.exit()
+            print(
+                f"{'++' * 10} {metric_rule} is an invalid rule. Metric rule should be 'min' or 'max'{'++' * 10}")
+            sys.exit()
 
         # =**======**======**======**===  transform model configuration into predictor training sample data ===**======**======**=
 
         if (config["predictor"]["predictor_dataset_type"]) == "graph":
-            x,model_config_choice = get_nodes_features(submodel, e_search_space)
+            x,mode_config_choice = get_nodes_features(submodel, e_search_space)
             y = np.array(model_performance)
             y = torch.tensor(y, dtype=torch.float32).view(-1, 1)
             graphdata = Data(x=x, edge_index=edge_index, y=y, num_nodes=x.shape[0],
                              model_config_choices=deepcopy(submodel))
             graph_list.append(graphdata)
             torch.save(graphdata, f"{config['path']['predictor_dataset_folder']}/graph{no + 1}_{x.shape[1]}Feats.pt")
+            for function, option in submodel.items():
 
-            # add architecture configuration to pandas dataframe for shapley-value computation
-            one_hot=np.zeros(len(list_of_choice), dtype=int)
-            for elt in model_config_choice:
-                    one_hot[elt[1]-1]=1
-            for id, option in enumerate(list_of_choice):
-                shapley_dataset[id].append(one_hot[id])
+
+                shapley_dataset[function].append(option[0])
             shapley_dataset[search_metric].append(model_performance)
+
 
         elif (config["predictor"]["predictor_dataset_type"]) == "table":
             for function, option in submodel.items():
@@ -127,7 +125,6 @@ def get_performance_distributions(e_search_space,
         dataset_file = f'{config["path"]["predictor_dataset_folder"]}/{config["dataset"]["dataset_name"]}-{config["param"]["budget"]} samples.csv'
         df.to_csv(dataset_file)
         return dataset_file
-
 
 def get_best_model(topk_list, option_decoder, dataset):
     torch.cuda.empty_cache()
@@ -187,7 +184,7 @@ def get_best_model(topk_list, option_decoder, dataset):
 
         train_dataset, val_dataset, test_dataset, in_channels, num_class = load_dataset(dataset)
 
-        # sys.stdout.write(f"Architecture {num_model}/{len(topk_list)}:{[dict_model[opt] for opt in dict_model.keys()]} ")
+        sys.stdout.write(f"Architecture {num_model}/{len(topk_list)}:{[dict_model[opt] for opt in dict_model.keys()]} ")
         model_performance = run_model(submodel_config=dict_model,
                                       train_data=train_dataset,
                                       test_data=val_dataset,

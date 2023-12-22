@@ -54,7 +54,7 @@ def create_config_file(type_task, dataset_name):
         "project_dir": project_root_dir,
         'config_filename': config_filename,
         "run_code": RunCode,
-        "budget": 1450,
+        "budget": 150,
         "k": 50,
         "z_sample": 1,  # Number of time  sampled models are trained before we report their performance
         "z_topk": 1,
@@ -62,11 +62,10 @@ def create_config_file(type_task, dataset_name):
         "train_ratio": 0.4,
         "nfcode": 56,  # number of digit for each function code when using embedding method
         "noptioncode": 8,
-        "sample_model_epochs": 120,
-        "topk_model_epochs": 120,
-        "best_model_epochs": 120,
+        "sample_model_epochs": 5,
+        "topk_model_epochs": 5,
+        "best_model_epochs": 5,
         "patience": 100,
-        'best_search_metric_rule': "max",  # max
         "encoding_method": "one_hot",  # ={one_hot, embedding,index_embedding}
         "type_sampling": "controlled_stratified_sampling",
         # random_sampling, uniform_sampling, controlled_stratified_sampling

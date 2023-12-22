@@ -1,7 +1,6 @@
 import random
 import sys
 
-import accelerate
 import torch
 import torch_geometric
 from sklearn.model_selection import StratifiedKFold
@@ -30,6 +29,8 @@ import numpy as np
 import scipy.sparse as sp
 import copy as cp
 
+print(f"Torch version: {torch.__version__}")
+print(f"Torch geometric version: {torch_geometric.__version__}")
 
 
 class ShuffleDataset(torch.utils.data.IterableDataset):
