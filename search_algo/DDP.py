@@ -36,6 +36,7 @@ def ddp_module(accelerator, total_epochs: int, model_to_train, optimizer, train_
                       criterion=criterion,
                       optimizer=optimizer,
                       accelerator=accelerator)
-        accelerator.wait_for_everyone()
+
     accelerator.wait_for_everyone()
+
     return model

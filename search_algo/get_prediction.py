@@ -97,7 +97,8 @@ def train_predictor_using_graph_dataset(predictor_dataset_folder):
                                       model_trainer=train_predictor,
                                       save_path=save_path)
 
-
+    unwrapped_model = accelerator.unwrap_model(best_predictor_model)
+    accelerator.save(unwrapped_model.state_dict(), save_path)
     # add_config("predictor", "best_loss", round(best_loss, 6))
     # add_config("predictor", "best_loss", round(best_loss, 6))
     metrics_list = map_predictor_metrics()
@@ -467,12 +468,17 @@ def predict_neural_performance_using_gnn(model, graphLoader):
     i = 0
     model.eval()
     for data in graphLoader:
+
+        accelerator.print(f"dataloder size is {len(graphLoader)}")
+        accelerator.print(f"This is model configuration type is {type(data.model_config_choices)}")
+        # accelerator.print(f"This is model configuration {data.model_config_choices}")
         performance = []
         i += 1
         pred = model(data)
         all_pred = accelerator.gather(pred)
         performance = np.append(performance, all_pred.cpu().detach().numpy())
-        choices = deepcopy(accelerator.gather(data.model_config_choices))
+
+        choices = deepcopy(data.model_config_choices)
         choice = []
         for a in range(len(pred)):  # loop for retriving the GNN configuration of each graph in the data loader
             temp_list = []
