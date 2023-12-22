@@ -16,7 +16,14 @@ from copy import deepcopy
 from predictor_models import *
 import importlib
 import torch.optim as optim
-# import shap
+import shap
+from accelerate import Accelerator
+import pandas as pd
+import numpy as np
+import time
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_squared_error
+from sklearn.model_selection import train_test_split
 device=torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
@@ -80,10 +87,11 @@ def train_predictor_using_graph_dataset(predictor_dataset_folder):
                                       optimizer=optimizer,
                                       train_dataloader=prepare_data_loader(train_data,batch_size=Batch_Size),
                                       criterion=criterion,
-                                      model_trainer=train_predictor)
+                                      model_trainer=train_predictor,
+                                      save_path=save_path)
 
-    unwrapped_model = accelerator.unwrap_model(best_predictor_model)
-    accelerator.save(unwrapped_model.state_dict(), save_path)
+
+    # add_config("predictor", "best_loss", round(best_loss, 6))
     # add_config("predictor", "best_loss", round(best_loss, 6))
     metrics_list = map_predictor_metrics()
     predictor_performance = test_predictor(accelerator=accelerator,
@@ -93,7 +101,7 @@ def train_predictor_using_graph_dataset(predictor_dataset_folder):
                                            title="Predictor training test")
 
     for metric, value in predictor_performance.items():
-        add_config("results", f"{metric}_train", value)
+        add_config("predictor", f"{metric}_train", value)
         print(f"{metric}_train: {value}")
     print(f"Neural predictor training completed in {round((time.time() - start_train_time) / 60, 3)} minutes \n")
     add_config("time", "predictor_training_time", (time.time() - start_train_time))
@@ -104,8 +112,8 @@ def train_predictor_using_graph_dataset(predictor_dataset_folder):
                                            metrics_list=metrics_list,
                                            title="Predictor validation test")
     for metric, value in predictor_performance.items():
-        add_config("results", f"{metric}_val", value)
-        print(f"{metric}_test: {value}")
+        add_config("predictor", f"{metric}_val", value)
+        print(f"{metric}_val: {value}")
 
     return feature_size
 
@@ -127,6 +135,7 @@ def predict_and_rank(e_search_space, predictor_graph_edge_index, feature_size):
             dim=dim,
             drop_out=drop_out,
             out_channels=1)
+
         model_weigth_path = f"{config['path']['result_folder']}/predictor_model_weight.pt"
         predictor_model.load_state_dict(torch.load(model_weigth_path))
         predictor_model = predictor_model.to(device)
@@ -147,7 +156,7 @@ def predict_and_rank(e_search_space, predictor_graph_edge_index, feature_size):
         #    transform model configuration into graph data
         graph_list = []
         for model_config in sample:
-            x = get_nodes_features(model_config, e_search_space)
+            x,_ = get_nodes_features(model_config, e_search_space)
             edge_index = get_edge_index(model_config, predictor_graph_edge_index)
             graphdata = Data(x=x, edge_index=edge_index, num_nodes=x.shape[0],
                              model_config_choices=deepcopy(model_config))
@@ -169,6 +178,7 @@ def predict_and_rank(e_search_space, predictor_graph_edge_index, feature_size):
     print(f" {len(lists)} Architecture performances predicted in {round(prediction_time / 60, 3)} minutes")
     add_config("time", "pred_time", prediction_time)
     return TopK_final
+
 
 def feat_coef_reduce_and_rank(e_search_space, predictor_graph_edge_index,
                               feature_size, predictor_dataset_folder):
@@ -200,16 +210,23 @@ def feat_coef_reduce_and_rank(e_search_space, predictor_graph_edge_index,
     train_loader = DataLoader(train_loader, batch_size=pred_Batch_Size, shuffle=True)
     val_loader = DataLoader(val_loader, batch_size=pred_Batch_Size, shuffle=False)
     criterion = map_predictor_criterion(config["predictor"]["criterion"])
-
-    for i in [train_loader, val_loader]:
+    start_time = time.time()
+    for data_loader in [train_loader, val_loader]:
         if feature_importance_source == "gradients":
-            feature_importance = compute_gradient_feature_importance(predictor_model, i, criterion)
+            feature_importance = compute_gradient_feature_importance(predictor_model, data_loader, criterion)
         elif feature_importance_source == "shapley_values":
-            feature_importance = compute_shapley_value(predictor_model, i, criterion)
+            feature_importance = compute_shapley_value(predictor_model, data_loader, criterion)
+            print("feature importance size is:", len(feature_importance))
         else:
             raise ValueError("Wrong value for feature importance computation type")
         total_importance.append(feature_importance)
-    fi = torch.mean(torch.cat(total_importance, dim=0), dim=0).tolist()
+    if feature_importance_source == "shapley_values":
+        grouped_data = list(zip(*feature_importance))
+        # Calculate the mean for each group
+        fi = [sum(group) / len(group) for group in grouped_data]
+        print("This is the final fi", fi)
+    else:
+        fi = torch.mean(torch.cat(torch.tensor(total_importance), dim=0), dim=0).tolist()
     print(f"Feature importance details is as follows: | # features:{len(fi)}| max:{max(fi)} |Min:{min(fi)} ")
     for fct, value in base_space.items():  # this loop to remove all options that decrease the model performance
         for option, option_details in value.items():
@@ -230,7 +247,7 @@ def feat_coef_reduce_and_rank(e_search_space, predictor_graph_edge_index,
                     else:
                         print(f"The option {option} is no longer present in the search space")
     get_final_sp_details(e_search_space)
-
+    add_config("time", "sp_reduce", round(time.time() - start_time,4 ))
     sample_list = random_sampling(e_search_space=e_search_space, n_sample=0, predictor=True)
     lists = [elt for elt in range(0, len(sample_list), int(config["param"]["batch_sample"]))]
     TopK_models = []
@@ -245,7 +262,7 @@ def feat_coef_reduce_and_rank(e_search_space, predictor_graph_edge_index,
         graph_list = []
         for model_config in sample:
             # print(f"this is the model configuration {model_config}")
-            x = get_nodes_features(model_config, e_search_space)
+            x,_ = get_nodes_features(model_config, e_search_space)
             edge_index = get_edge_index(model_config, predictor_graph_edge_index)
             graphdata = Data(x=x,
                              edge_index=edge_index,
@@ -271,10 +288,44 @@ def feat_coef_reduce_and_rank(e_search_space, predictor_graph_edge_index,
     TopK_model.to_excel(f"{config['path']['result_folder']}/Topk_model_configs.xlsx")
     return TopK_final
 
+
+
+
 def compute_shapley_value(model, sample_input, num_samples=100):
-    explainer = shap.Explainer(model, masker=shap.maskers.Independent)
-    shap_values = explainer.shap_values(sample_input)
-    return shap_values
+    start_time = time.time()
+    from sklearn.ensemble import RandomForestRegressor
+    from sklearn.ensemble import StackingRegressor
+    # import xgboost
+    dataset_file=f'{config["path"]["result_folder"]}/shapley_dataset.csv'
+    search_metric = config["param"]["search_metric"]
+    shap.initjs()
+    df = pd.read_csv(dataset_file)
+    X= df.drop(search_metric,axis=1)
+    Y = df[search_metric]
+    # X_encoded = pd.get_dummies(X, drop_first=True)
+
+    # X_train, X_test, Y_train, Y_test = train_test_split(X_encoded,Y, test_size=0.2, random_state=num_seed)
+    stkr = StackingRegressor(
+        estimators=[ ('rfr', RandomForestRegressor())],
+        final_estimator=RandomForestRegressor(),
+        cv=3
+    )
+    model = stkr.fit(X, Y)
+
+    explainer = shap.KernelExplainer(model.predict, X)
+    shap_value = explainer.shap_values(X)
+    shap.summary_plot(shap_value, X, plot_type="bar")
+
+    print(f"Shapley values are as follows: | # samples:{len(shap_value)}")
+    print(shap_value)
+    print(f"Shapley computation time is {round((time.time() - start_time)/60, 4)} Minutes")
+
+    return shap_value
+
+
+
+
+
 
 def compute_gradient_feature_importance(model, sample_dataset, criterion):
     model.eval()
@@ -293,7 +344,9 @@ def compute_gradient_feature_importance(model, sample_dataset, criterion):
 
     return torch.cat(feature_importance, dim=0)
 
-def prob_reduce_and_rank(e_search_space, predictor_graph_edge_index, feature_size, option_decoder, ratio_treshold=0.3):
+
+
+def prob_reduce_and_rank9(e_search_space, predictor_graph_edge_index, feature_size, option_decoder, ratio_treshold=0.3):
     set_seed()
     dim = int(config["predictor"]["dim"])
     drop_out = float(config["predictor"]["drop_out"])
@@ -317,6 +370,7 @@ def prob_reduce_and_rank(e_search_space, predictor_graph_edge_index, feature_siz
         raise ValueError("Wrong pre-trained predictor path")
     base_space = {}
     rnd = 1
+    start_time = time.time()
     while base_space != e_search_space:
         TopK_models = []
         c_count = {}
@@ -372,10 +426,10 @@ def prob_reduce_and_rank(e_search_space, predictor_graph_edge_index, feature_siz
                         e_search_space[fct].pop(option)
                     else:
                         print(f"The option {option} is no longer present in the search space")
-        print(f"The search space after {rnd} is : {e_search_space}")
+        print(f"The search space after {rnd} round is : {e_search_space}")
         rnd += 1
     get_final_sp_details(e_search_space)
-
+    add_config("time", "sp_reduce", round(time.time() - start_time,4 ))
     sample_list = random_sampling(e_search_space=e_search_space, n_sample=0, predictor=True)
     lists = [elt for elt in range(0, len(sample_list), int(config["param"]["batch_sample"]))]
     TopK_models = []
@@ -415,6 +469,8 @@ def prob_reduce_and_rank(e_search_space, predictor_graph_edge_index, feature_siz
     add_config("time", "pred_time", prediction_time)
     TopK_model.to_excel(f"{config['path']['result_folder']}/Topk_model_configs.xlsx")
     return TopK_final
+
+
 
 def gradient_reduce_and_rank(e_search_space, predictor_graph_edge_index, feature_size, option_decoder, ratio_treshold=0.3):
     set_seed()
@@ -579,7 +635,7 @@ def prob_reduce_and_rank(e_search_space, predictor_graph_edge_index, feature_siz
             #    transform model configuration into graph data
             graph_list = []
             for model_config in sample:
-                x = get_nodes_features(model_config, e_search_space)
+                x,_ = get_nodes_features(model_config, e_search_space)
                 edge_index = get_edge_index(model_config, predictor_graph_edge_index)
                 graphdata = Data(x=x,
                                  edge_index=edge_index,
@@ -635,7 +691,7 @@ def prob_reduce_and_rank(e_search_space, predictor_graph_edge_index, feature_siz
         graph_list = []
         for model_config in sample:
             # print(f"this is the model configuration {model_config}")
-            x = get_nodes_features(model_config, e_search_space)
+            x,_ = get_nodes_features(model_config, e_search_space)
             graphdata = Data(x=x,
                              edge_index=edge_index,
                              num_nodes=x.shape[0],

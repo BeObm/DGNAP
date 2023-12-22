@@ -1,8 +1,9 @@
+import accelerate
 from torch_geometric.loader import DataLoader
 from settings.config_file import *
 import glob
 import torch
-
+import random
 
 def load_predictor_dataset(dataset_source_path):
     set_seed()
@@ -12,7 +13,7 @@ def load_predictor_dataset(dataset_source_path):
         data = torch.load(filename)
         data.y = data.y.view(-1, 1)
         graphlist.append(data)
-
+    random.shuffle(graphlist)
     graph_list = graphlist[:int(config["param"]["n"])]
     val_size = int(len(graph_list) * 20 / 100)
 

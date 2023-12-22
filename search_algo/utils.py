@@ -112,8 +112,7 @@ def get_nodes_features(model_config, e_search_space):
         model_config_choices.append((function, option[1]))
     x = np.array(nodes_features_list)
     x = torch.tensor(x, dtype=torch.float32)
-
-    return x
+    return x,model_config_choices
 
 
 def get_edge_index(model_config, predictor_graph_edge_index):
@@ -198,33 +197,9 @@ def evaluate_model(y_true, y_pred,type_data="val"):
             metric_obj = importlib.import_module(f"search_algo.utils")
             metric_function = getattr(metric_obj, metric)
             predictor_performances[metric] = metric_function(np.squeeze(y_true), np.squeeze(y_pred))
-
-
-    # col = "blue"
-    #
-    # plt.figure(figsize=(8, 8))
-    #
-    # xmin = min(min(y_pred), min(y_true))
-    # xmax = max(max(y_pred), max(y_true))
-    #
-    # if xmin < 0:
-    #     xmin = 0
-    # if xmax > 100:
-    #     xmax = 100
-    #
-    # lst = [a for a in range(int(xmin), int(xmax) + 1)]
-    # plt.plot(lst, lst, color='black', linewidth=0.6)
-    # plt.scatter(y_true, y_pred, color=col, linewidth=0.8)
-    #
-    # plt.xlabel(f'True {search_metric}', fontsize=28)
-    # plt.ylabel(f'Predicted {search_metric}', fontsize=28)
-    # # plt.legend()
-    # plt.grid()
-    # plt.show()
-    # plt.savefig(f'{config["path"]["plots_folder"]}/{random.choice(range(500000))}_{dataset_name}.pdf',
-    #             bbox_inches="tight", dpi=1000)
-
     return predictor_performances
+
+
 
 def save_search_space_evolution(search_space, rnd):
     file = f"{config['path']['result_folder']}/search_space_reduction_record.txt"
@@ -232,6 +207,9 @@ def save_search_space_evolution(search_space, rnd):
         record.write(f"\n\n Search space after {rnd} rounds of search space reduction {'*'*5} \n")
         for k,v in search_space.items():
             record.write(f"{k} : {v} \n")
+
+
+
 def Generate_time_cost():
     dataset_construction = float(config["time"]["distribution_time"])
     predictor_training = float(config["time"]["predictor_training_time"])
@@ -321,6 +299,8 @@ def create_paths():
     add_config("path", "predictor_dataset_folder", predictor_results_folder)
 
     add_config("path", "predictor_weight_path", result_folder)
+
+
 def get_sp_details(sp):
     total_choices = 0
     t1 = 1
@@ -329,3 +309,12 @@ def get_sp_details(sp):
         t1 = t1 * len(v)
         total_choices += len(v)
     return sp_size,total_choices,t1
+
+
+
+def get_list_of_choice(sp):
+    liste=[]
+    for function,choices in sp.items():
+        for choice,value in choices.items():
+            liste.append(choice)
+    return liste

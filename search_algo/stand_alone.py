@@ -12,7 +12,6 @@ from GNN_models.node_classification import *
 from GNN_models.graph_classification import *
 
 
-
 def get_test_performance(submodel, dataset):
     set_seed()
     z_final= int(config["param"]["z_final"])
@@ -31,7 +30,8 @@ def get_test_performance(submodel, dataset):
                                   epochs=epochs,
                                   numround=z_final,
                                   shared_weight=None,
-                                  type_data="test")
+                                  type_data="test",
+                                  type_model="final")
 
     for result, performance in model_performance.items():
         add_config("results", result, model_performance[result])

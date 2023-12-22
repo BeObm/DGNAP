@@ -8,21 +8,21 @@ import os.path as osp
 import os
 from datetime import datetime
 
-# device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-# device = torch.device('cpu')
+
 num_workers = 8
 num_seed = 42
 config = ConfigParser()
 Batch_Size = 96 * 3
 
-#
+
+
 RunCode = dates = datetime.now().strftime("%d-%m_%Hh%M")
 
 
 def set_seed(num_seed=num_seed):
     # os.CUBLAS_WORKSPACE_CONFIG="4096:8"
-    # torch.backends.cudnn.deterministic = True
-    # torch.backends.cudnn.benchmark = False
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
     torch.manual_seed(num_seed)
     torch.cuda.manual_seed_all(num_seed)
     np.random.seed(num_seed)
@@ -54,47 +54,42 @@ def create_config_file(type_task, dataset_name):
         "project_dir": project_root_dir,
         'config_filename': config_filename,
         "run_code": RunCode,
-        "budget": 80,
-        "k": 10,
+        "budget": 1450,
+        "k": 50,
         "z_sample": 1,  # Number of time  sampled models are trained before we report their performance
         "z_topk": 1,
         "z_final": 2,
         "train_ratio": 0.4,
         "nfcode": 56,  # number of digit for each function code when using embedding method
         "noptioncode": 8,
-        "sample_model_epochs": 50,
-        "topk_model_epochs": 50,
-        "best_model_epochs": 50,
+        "sample_model_epochs": 120,
+        "topk_model_epochs": 120,
+        "best_model_epochs": 120,
         "patience": 100,
-        'search_metric': "roc_auc",  # matthews_corr_coef, balanced_accuracy_score, accuracy_score, roc_auc, auc_pr
         'best_search_metric_rule': "max",  # max
         "encoding_method": "one_hot",  # ={one_hot, embedding,index_embedding}
         "type_sampling": "controlled_stratified_sampling",
         # random_sampling, uniform_sampling, controlled_stratified_sampling
-
         "feature_size_choice": "total_choices",
         # total_functions total_choices  # for one hot encoding using graph dataset for predictor, use"total choices
         'type_input_graph': "directed",
-        "use_paralell": "no",
         "learning_type": "supervised",
-        "predict_sample": 500000,
-        "batch_sample": 10000
+        "predict_sample": 5000,
+        "batch_sample": 100000
     }
 
     config["predictor"] = {
         "predictor_dataset_type": "graph",
-        "Predictor_model": "GNN_ranking",  # "GNN_ranking","GNN_performance"
         "predictor_metric": "spearman_corr",
         # , ["R2_score", "pearson_corr", "kendall_corr", "spearman_corr"], ["spearman_corr","map_score", "ndcg_score", "kendall_corr", "Top_k_Acc"]
         "pred_Batch_Size": 64,
-        "dim": 128,
-        "drop_out": 0.3,
+        "dim": 512,
+        "drop_out": 0.2,
         "lr": 0.005,
         "wd": 0.0001,
         "momentum": 0.8,
         "num_epoch": 500,
-        "criterion": "MSELoss",  # , [MSELoss,]  [PairwiseLoss, MarginRankingLoss]
-        "optimizer": "adam",
+        "optimizer": "adamW",
         "patience": 50,
         "best_loss":0
     }

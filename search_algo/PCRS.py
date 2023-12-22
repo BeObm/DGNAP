@@ -13,9 +13,11 @@ from load_data.load_data import load_dataset
 from GNN_models.graph_classification import *
 from settings.config_file import *
 import importlib
+from accelerate import Accelerator
 from search_algo.DDP import *
 from tqdm.auto import tqdm
 import torch.multiprocessing as mp
+
 
 def get_performance_distributions(e_search_space,
                                   dataset,
@@ -27,7 +29,7 @@ def get_performance_distributions(e_search_space,
     epochs = int(config["param"]["sample_model_epochs"])
     n_sample = int(config["param"]["N"])
     search_metric = config["param"]["search_metric"]
-
+    list_of_choice=get_list_of_choice(e_search_space)
     timestart = time.time()
     print(f' \n  {"#" * 10} Getting {search_metric}  of  {n_sample} models {"#" * 10} \n')
     best_performance =get_initial_best_performance()
@@ -35,6 +37,7 @@ def get_performance_distributions(e_search_space,
     model_list = sample_models(n_sample, e_search_space)
     edge_index = get_edge_index(model_list[0], predictor_graph_edge_index)
     predictor_dataset = defaultdict(list)
+    shapley_dataset = defaultdict(list)
     graph_list = []
 
     train_dataset, val_dataset, test_dataset, in_channels, num_class = load_dataset(dataset)
@@ -72,20 +75,27 @@ def get_performance_distributions(e_search_space,
                 best_sample[search_metric] = best_performance
 
         else:
-            print(
-                f"{'++' * 10} {metric_rule} is an invalid rule. Metric rule should be 'min' or 'max'{'++' * 10}")
-            sys.exit()
+           print(f"{'++' * 10} {metric_rule} is an invalid rule. Metric rule should be 'min' or 'max'{'++' * 10}")
+           sys.exit()
 
         # =**======**======**======**===  transform model configuration into predictor training sample data ===**======**======**=
 
         if (config["predictor"]["predictor_dataset_type"]) == "graph":
-            x = get_nodes_features(submodel, e_search_space)
+            x,model_config_choice = get_nodes_features(submodel, e_search_space)
             y = np.array(model_performance)
             y = torch.tensor(y, dtype=torch.float32).view(-1, 1)
             graphdata = Data(x=x, edge_index=edge_index, y=y, num_nodes=x.shape[0],
                              model_config_choices=deepcopy(submodel))
             graph_list.append(graphdata)
             torch.save(graphdata, f"{config['path']['predictor_dataset_folder']}/graph{no + 1}_{x.shape[1]}Feats.pt")
+
+            # add architecture configuration to pandas dataframe for shapley-value computation
+            one_hot=np.zeros(len(list_of_choice), dtype=int)
+            for elt in model_config_choice:
+                    one_hot[elt[1]-1]=1
+            for id, option in enumerate(list_of_choice):
+                shapley_dataset[id].append(one_hot[id])
+            shapley_dataset[search_metric].append(model_performance)
 
         elif (config["predictor"]["predictor_dataset_type"]) == "table":
             for function, option in submodel.items():
@@ -100,19 +110,24 @@ def get_performance_distributions(e_search_space,
             sys.exit()
 
         pbar.write(f"{txt_model} | {search_metric}:{round(model_performance,5)}")
-        pbar.set_description(f"training samples.|Best {search_metric}={round(best_performance,5)}")
+        pbar.set_description(f"Training samples.|Best {search_metric}={round(best_performance,5)}")
         pbar.update(1)
     distribution_time = round(time.time() - timestart, 2)
     add_config("time", "distribution_time", distribution_time)
     add_config("results", f"{search_metric}_of_best_sampled_model", best_performance)
 
     if (config["predictor"]["predictor_dataset_type"]) == "graph":
+        df = pd.DataFrame.from_dict(shapley_dataset, orient="columns")
+        dataset_file = f'{config["path"]["result_folder"]}/shapley_dataset.csv'
+        df.to_csv(dataset_file)
         return config['path']['predictor_dataset_folder']
+
     if (config["param"]["predictor_dataset_type"]) == "table":
         df = pd.DataFrame.from_dict(predictor_dataset, orient="columns")
         dataset_file = f'{config["path"]["predictor_dataset_folder"]}/{config["dataset"]["dataset_name"]}-{config["param"]["budget"]} samples.csv'
         df.to_csv(dataset_file)
         return dataset_file
+
 
 def get_best_model(topk_list, option_decoder, dataset):
     torch.cuda.empty_cache()
@@ -151,10 +166,13 @@ def get_best_model(topk_list, option_decoder, dataset):
     predicted_performance = []
     true_performance = []
     metrics_list = map_predictor_metrics()
+
+    pbar = tqdm(total=len(topk_list))
+    pbar.set_description("training best models")
     for idx, row in topk_list.iterrows():
         num_model += 1
         dict_model = {}  #
-
+        txt_model = f"Model_Config: {row['model_config']} "
         if (config["predictor"]["predictor_dataset_type"]) == "graph":
             for choice in row["model_config"]:
                 dict_model[choice[0]] = option_decoder[choice[1]]
@@ -169,7 +187,7 @@ def get_best_model(topk_list, option_decoder, dataset):
 
         train_dataset, val_dataset, test_dataset, in_channels, num_class = load_dataset(dataset)
 
-        sys.stdout.write(f"Architecture {num_model}/{len(topk_list)}:{[dict_model[opt] for opt in dict_model.keys()]} ")
+        # sys.stdout.write(f"Architecture {num_model}/{len(topk_list)}:{[dict_model[opt] for opt in dict_model.keys()]} ")
         model_performance = run_model(submodel_config=dict_model,
                                       train_data=train_dataset,
                                       test_data=val_dataset,
@@ -186,28 +204,24 @@ def get_best_model(topk_list, option_decoder, dataset):
             if model_performance > max_performace:
                 max_performace = model_performance
                 bestmodel = copy.deepcopy(dict_model)
-                sys.stdout.write(
-                    f" -------> {search_metric} = {round(model_performance, 4)} ===**===> Best Performance \n\n")
-            else:
-                sys.stdout.write(f" ------> {search_metric} = {round(model_performance, 4)}  \n\n")
-
         elif metric_rule == "min":
             if model_performance < max_performace:
                 max_performace = model_performance
                 bestmodel = copy.deepcopy(dict_model)
-                sys.stdout.write(
-                    f" -------> {search_metric} = {round(model_performance, 4)} ===**===> Best Performance \n\n")
-            else:
-                sys.stdout.write(f" ------> {search_metric} = {round(model_performance, 4)}  \n\n")
+
         else:
             print(
                 f"{'++' * 10} {metric_rule} is an invalid rule. Metric rule should be 'min' or 'max'{'++' * 10}")
             sys.exit()
+        pbar.write(f"{txt_model} | {search_metric}:{round(model_performance, 5)}")
+        pbar.set_description(f"Training best Models.|Best {search_metric}={round(max_performace, 5)}")
+        pbar.update(1)
 
     predictor_performance = evaluate_model_predictor(true_performance, predicted_performance, metrics_list,
                                                      title="Predictor test")
     for metric, value in predictor_performance.items():
-        add_config("results", f"{metric}_test", value)
+        add_config("predictor", f"{metric}_test", value)
+    add_config("results", f"Best_model_{search_metric}", round(max_performace,5))
     get_best_model_time = round(time.time() - start_time, 2)
     add_config("time", "get_best_model_time", get_best_model_time)
 
@@ -255,7 +269,7 @@ def get_option_maps(submodel):
 
 
 def run_model(submodel_config, train_data, test_data, in_chanels,
-              num_class, epochs, numround=1, shared_weight=None, type_data="val"):
+              num_class, epochs, numround=1, shared_weight=None, type_data="val",type_model="architecture"):
     ddp_kwargs = DistributedDataParallelKwargs(find_unused_parameters=True)
     accelerator = Accelerator(kwargs_handlers=[ddp_kwargs])
     search_metric = config["param"]["search_metric"]
@@ -269,11 +283,13 @@ def run_model(submodel_config, train_data, test_data, in_chanels,
     optimizer = params_config["optimizer"](new_model.parameters(),
                                            lr=params_config['lr'],
                                            weight_decay=params_config['weight_decay'])
+    if type_model=="final":
+         optimizer.param_groups[0]['capturable'] = False
     criterion = params_config["criterion"]
     performance_record = []
     test_performance_record = defaultdict(list)
     for i in range(numround):
-        trainer = ddp_module(accelerator= accelerator,
+        trainer = ddp_module(accelerator=accelerator,
                    total_epochs=epochs,
                    model_to_train=new_model,
                    optimizer=optimizer,

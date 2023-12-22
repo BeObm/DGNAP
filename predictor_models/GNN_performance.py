@@ -16,7 +16,7 @@ class Predictor(MessagePassing):
     def __init__(self, in_channels, dim, out_channels, drop_out):
         super(Predictor, self).__init__()
         #         self.embed_edges = Linear(self.edge_attr_size, self.hidden_channels)
-        # print("in channels dim =",in_channels)
+        # accelerate.print("in channels dim =",in_channels)
         self.conv1 = GraphSAGE(in_channels,128,4, dim,)
 
         self.conv2 = GraphSAGE(dim,128,3, dim)

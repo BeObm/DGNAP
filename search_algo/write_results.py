@@ -1,8 +1,13 @@
 # -*- coding: utf-8 -*-
 from predictor_models.utils import *
 from settings.config_file import *
+from accelerate import Accelerator
+accelerator = Accelerator()
 
 
+
+
+@accelerator.on_local_main_process
 def write_results(best_model, test_performances_record):
     k = int(config["param"]["k"])
     search_metric = config["param"]["search_metric"]
@@ -29,11 +34,16 @@ def write_results(best_model, test_performances_record):
         results.write(f'Number of TopK models: {int(config["param"]["k"])}\n')
         results.write(f'Best sampled model: {best_model}\n')
         results.write(f'Best Sampled model {search_metric}: {float(config["results"][f"{search_metric}_of_best_sampled_model"])}\n')
+
         for metric in predictor_metric:
-            results.write(f'predictor {metric}: |Train= {float(config["results"][f"{metric}_train"])} |Val={float(config["results"][f"{metric}_val"])} \n')
+            results.write(f'predictor {metric}: |Train= {float(config["predictor"][f"{metric}_train"])} |Val={float(config["predictor"][f"{metric}_val"])} |Test={float(config["predictor"][f"{metric}_test"])} \n')
         for metric, performance in test_performances_record.items():
-            results.write(f'best_{metric}= {float(config["results"][metric])}   \n')
+            results.write(f'stand_alone_best_{metric}= {float(config["results"][metric])}   \n')
         results.write(f'dataset_time_cost: {float(config["time"]["dataset_time_cost"])}\n')
+        try:
+            results.write(f'search_space_reduction_time_cost: {float(config["time"]["sp_reduce"])}\n')
+        except:
+            pass
         results.write(f'Search time cost: {float(config["time"]["search_time"])}\n')
         results.write(f'total search time cost: {float(config["time"]["total_search_time"])}\n')
         results.write(f'Number of GPUs: {float(config["param"]["nb_gpu"])}\n')
@@ -61,14 +71,18 @@ def write_results(best_model, test_performances_record):
     print(f'Number of samples: {int(config["param"]["N"])}\n')
     print(f'Number of TopK models: {int(config["param"]["k"])}\n')
     print(f'Best sampled  model: {best_model}\n')
-    print(f'Best model {search_metric}: {float(config["results"][f"{search_metric}_of_best_sampled_model"])}\n')
+    print(f'Best Sampled model {search_metric}: {float(config["results"][f"{search_metric}_of_best_sampled_model"])}\n')
 
     for metric in predictor_metric:
-        print(f'predictor {metric}: |Train= {float(config["results"][f"{metric}_train"])} |Val={float(config["results"][f"{metric}_val"])} \n')
+        print(f'predictor {metric}: |Train= {float(config["predictor"][f"{metric}_train"])} |Val={float(config["predictor"][f"{metric}_val"])} |Test={float(config["predictor"][f"{metric}_test"])} \n')
     for metric, performance in test_performances_record.items():
-        print(f'best_{metric}= {float(config["results"][metric])} \n')
+        print(f'stand_alone_best_{metric}= {float(config["results"][metric])} \n')
     print(f'dataset_time_cost: {float(config["time"]["dataset_time_cost"])}\n')
     print(f'Search time cost: {float(config["time"]["search_time"])}\n')
+    try:
+        print(f'search_space_reduction_time_cost: {float(config["time"]["sp_reduce"])}\n')
+    except:
+        pass
     print(f'total search time cost: {float(config["time"]["total_search_time"])}\n')
     print(f'Number of GPUs: {float(config["param"]["nb_gpu"])}\n')
     print(f'{"--" * 20} END {"--" * 20}\n\n ')

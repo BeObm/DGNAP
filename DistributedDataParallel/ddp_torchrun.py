@@ -11,7 +11,7 @@ from torch.distributed import init_process_group, destroy_process_group
 import os
 from time import time
 
-class MyTrainDataset(Dataset):
+class TrainDataset(Dataset):
     def __init__(self, size):
         self.size = size
         self.data = [(torch.rand(20), torch.rand(1)) for _ in range(size)]

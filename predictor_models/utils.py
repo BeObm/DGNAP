@@ -18,11 +18,11 @@ import itertools
 
 def map_predictor_optimizer(optimizers):
     if optimizers == 'adam':
-        return torch.optim.Adam
+        return torch.optim.AdamW
     elif optimizers == 'sgd':
         return torch.optim.SGD
 
-    elif optimizers == 'Adagrad':
+    elif optimizers == 'adamW':
         return torch.optim.Adagrad
     elif optimizers == 'LambdaRank':
         return torch.optim.SGD
