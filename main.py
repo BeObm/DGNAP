@@ -27,7 +27,7 @@ if __name__ == "__main__":
     parser.add_argument("--search_space_name", help="search space name", default="spatial_gnap_gl_space")
     parser.add_argument("--sp_reduce", type=str, default="none", choices=["none", "probs", "gradients", "shapley_values"],help="search_space_reduction_strategy")
     parser.add_argument("--search_metric", type=str, default="Accuracy_score", help="metric for search guidance")
-    parser.add_argument("--best_search_metric_rule", type=str, default="max", help="best_search_metric_rule", choices=["min","max"]) # "GNN_ranking","GNN_performance"
+    parser.add_argument("--best_search_metric_rule", type=str, default="max", help="best search metric rule",choices=["min","max"]) # "GNN_ranking","GNN_performance"
     parser.add_argument("--predictor", type=str, default="GNN_performance", help="predictor type") # "GNN_ranking","GNN_performance"
     parser.add_argument("--predictor_criterion", type=str, default="MSELoss", help="loss function for predictor", choices=["MSELoss","PairwiseLoss", "MarginRankingLoss"])
     parser.add_argument("--nb_gpu", type=str, default=2, help="Number of GPU")

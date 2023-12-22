@@ -127,11 +127,10 @@ def get_performance_distributions(e_search_space,
         return dataset_file
 
 def get_best_model(topk_list, option_decoder, dataset):
-    torch.cuda.empty_cache()
+
     set_seed()
     search_metric = config["param"]["search_metric"]
     metric_rule = config["param"]["best_search_metric_rule"]
-
     best_loss_param_path = f"{config['path']['predictor_weight_path']}/best_dist_param.pth"
 
     z_topk = int(config["param"]["z_topk"])

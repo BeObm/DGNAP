@@ -81,13 +81,13 @@ def create_config_file(type_task, dataset_name):
         "predictor_dataset_type": "graph",
         "predictor_metric": "spearman_corr",
         # , ["R2_score", "pearson_corr", "kendall_corr", "spearman_corr"], ["spearman_corr","map_score", "ndcg_score", "kendall_corr", "Top_k_Acc"]
-        "pred_Batch_Size": 64,
+        "pred_Batch_Size": 96,
         "dim": 512,
         "drop_out": 0.2,
         "lr": 0.005,
         "wd": 0.0001,
         "momentum": 0.8,
-        "num_epoch": 500,
+        "num_epoch": 50,
         "optimizer": "adamW",
         "patience": 50,
         "best_loss":0
