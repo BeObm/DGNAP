@@ -428,7 +428,7 @@ def prob_reduce_and_rank(e_search_space, predictor_graph_edge_index, feature_siz
         #    transform model configuration into graph data
         graph_list = []
         for model_config in sample:
-            # print(f"this is the model configuration {model_config}")
+          
             x,_ = get_nodes_features(model_config, e_search_space)
             graphdata = Data(x=x,
                              edge_index=edge_index,
