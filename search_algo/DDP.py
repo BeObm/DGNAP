@@ -38,6 +38,4 @@ def ddp_module(accelerator, total_epochs: int, model_to_train, optimizer, train_
                       accelerator=accelerator)
         accelerator.wait_for_everyone()
     accelerator.wait_for_everyone()
-    unwrapped_model = accelerator.unwrap_model(model)
-    unwrapped_model.save_pretrained(save_path, save_function=accelerator.save, state_dict=accelerator.get_state_dict(model))
     return model
