@@ -25,7 +25,7 @@ if __name__ == "__main__":
     parser.add_argument("--dataset", help="Dataset name", default="PROTEINS")
     parser.add_argument("--type_task", help="type_task name", default="graph_classification", choices=["graph_anomaly", "graph_classification", "graph_regression","node_classification"])
     parser.add_argument("--search_space_name", help="search space name", default="spatial_gnap_gl_space")
-    parser.add_argument("--sp_reduce", type=str, default="none", choices=["none", "probs", "gradients", "shapley_values"],help="search_space_reduction_strategy")
+    parser.add_argument("--sp_reduce", type=str, default="shapley_values", choices=["none", "probs", "gradients", "shapley_values"],help="search_space_reduction_strategy")
     parser.add_argument("--search_metric", type=str, default="Accuracy_score", help="metric for search guidance")
     parser.add_argument("--best_search_metric_rule", type=str, default="max", help="best search metric rule",choices=["min","max"]) # "GNN_ranking","GNN_performance"
     parser.add_argument("--predictor", type=str, default="GNN_performance", help="predictor type") # "GNN_ranking","GNN_performance"
@@ -59,8 +59,8 @@ if __name__ == "__main__":
     # print(dataset)
 
     e_search_space, option_decoder, predictor_graph_edge_index = create_e_search_space(args.search_space_name)
-    # performance_records_path = get_performance_distributions(e_search_space, dataset,predictor_graph_edge_index)
-    performance_records_path = "data/predictor"
+    performance_records_path = get_performance_distributions(e_search_space, dataset,predictor_graph_edge_index)
+    # performance_records_path = "data/predictor"
     search_start = time.time()
     dataset_time_cost = round(search_start - timestart, 2)
     add_config("time", "dataset_time_cost", dataset_time_cost)
