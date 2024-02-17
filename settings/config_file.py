@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import sys
 
 import torch
 import random
@@ -12,8 +13,8 @@ from datetime import datetime
 num_workers = 8
 num_seed = 42
 config = ConfigParser()
-Batch_Size = 96 * 3
-
+Batch_Size = 64 * 3
+ncluster=128
 
 
 RunCode = dates = datetime.now().strftime("%d-%m_%Hh%M")
@@ -54,17 +55,17 @@ def create_config_file(type_task, dataset_name):
         "project_dir": project_root_dir,
         'config_filename': config_filename,
         "run_code": RunCode,
-        "budget": 150,
-        "k": 50,
+        "budget": 1500,
+        "k": 100,
         "z_sample": 1,  # Number of time  sampled models are trained before we report their performance
         "z_topk": 1,
         "z_final": 2,
         "train_ratio": 0.4,
         "nfcode": 56,  # number of digit for each function code when using embedding method
         "noptioncode": 8,
-        "sample_model_epochs": 5,
-        "topk_model_epochs": 5,
-        "best_model_epochs": 5,
+        "sample_model_epochs": 150,
+        "topk_model_epochs": 150,
+        "best_model_epochs": 150,
         "patience": 100,
         "encoding_method": "one_hot",  # ={one_hot, embedding,index_embedding}
         "type_sampling": "controlled_stratified_sampling",
@@ -72,8 +73,11 @@ def create_config_file(type_task, dataset_name):
         "feature_size_choice": "total_choices",
         # total_functions total_choices  # for one hot encoding using graph dataset for predictor, use"total choices
         'type_input_graph': "directed",
-        "learning_type": "supervised",
-        "predict_sample": 5000,
+        "use_full_dataset": "no",
+        "large_scale_dataset": "yes",
+        "predict_sample": 500000,
+        "shapley_shap_type":"tree",  # kernel
+        "shapley_nsamples":600,
         "batch_sample": 100000
     }
 

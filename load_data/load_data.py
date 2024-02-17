@@ -1,27 +1,17 @@
 import random
 import sys
-
-import torch
+from settings.config_file import *
 import torch_geometric
 from sklearn.model_selection import StratifiedKFold
 from torch import cat
 from torch_geometric.data import Data
 from load_data.graph_anomaly import *
 import torch_geometric.transforms as T
-# from torch_geometric.loader import DataLoader
-from torch.utils.data import  DataLoader
-from torch.utils.data import Dataset
-
-import torch.distributed as dist
-from torch.utils.data.distributed import DistributedSampler
+from torch_geometric.loader import DataLoader, ClusterLoader,ClusterData
 from torch_geometric.datasets import TUDataset, PPI, Planetoid, Coauthor, Amazon, Flickr, FacebookPagePage
-from settings.config_file import *
+
 from scipy.io import loadmat
 import pickle
-
-import torch.nn.functional as F
-import argparse
-import time
 from sklearn.model_selection import train_test_split
 from collections import defaultdict
 import random as rd
@@ -67,24 +57,33 @@ class ShuffleDataset(torch.utils.data.IterableDataset):
 
 def get_dataset(type_task, dataset_root, dataset_name, normalize_features=True, transform=False):
     set_seed()
-    support_dataset_list = {"node_classification": ["Cora", "Citeseer", "Pubmed"],
+    support_dataset_list = {"node_classification": ["Cora", "Citeseer", "Pubmed","CS","Physics","Computers","Photo"],
                             "graph_classification": ["DD", "PROTEINS", "ENZYMES", "BZR", "COLLAB", "IMDB-BINARY"],
                             "graph_anomaly": ["yelp", "elliptic", "Amazon", "YelpChi"]
                             }
     if dataset_name in support_dataset_list[type_task]:
 
-        if dataset_name in ["Cora", "Citeseer", "Pubmed"]:
+        if type_task =="node_classification":
+
+            if dataset_name in ["Cora", "Citeseer", "Pubmed"]:
+                Downloder=Planetoid
+            elif dataset_name in ["CS","Physics"]:
+                Downloder=Coauthor
+            elif dataset_name in ["Computers","Photo"]:
+                Downloder=Amazon
+
             if transform ==True and normalize_features==True:
-                dataset = Planetoid(root=dataset_root, name=dataset_name,
+                dataset = Downloder(root=dataset_root, name=dataset_name,
                                     transform=T.Compose([T.NormalizeFeatures(), T.GCNNorm(), T.RandomNodeSplit()]))
             elif normalize_features == True and transform==False:
-                dataset = Planetoid(root=dataset_root, name=dataset_name,
+                dataset = Downloder(root=dataset_root, name=dataset_name,
                                     transform=T.Compose([T.NormalizeFeatures()]))
             elif normalize_features == False and transform==True:
-                dataset = Planetoid(root=dataset_root, name=dataset_name,
+                dataset = Downloder(root=dataset_root, name=dataset_name,
                                     transform=T.Compose([T.GCNNorm(), T.RandomNodeSplit()]))
             else:
-                dataset = Planetoid(root=dataset_root, name=dataset_name)
+                dataset = Downloder(root=dataset_root, name=dataset_name)
+
         elif dataset_name in ["DD", "PROTEINS", "ENZYMES", "BZR", "COLLAB", "IMDB-BINARY"]:
             dataset = TUDataset(root=dataset_root, name=dataset_name, use_node_attr=True,use_edge_attr=True)  #
             dataset = dataset.shuffle()
@@ -107,17 +106,18 @@ def get_dataset(type_task, dataset_root, dataset_name, normalize_features=True, 
     return dataset
 
 
-def load_dataset(dataset, batch_dim=Batch_Size):
+def load_dataset(dataset):
     type_task = config["dataset"]["type_task"]
     set_seed()
 
     if type_task == "node_classification":
-        if config["param"]["learning_type"] == "supervised":
-            test_dataset = train_dataset = val_dataset = Load_nc_data(dataset[0])
-        else:
+        if config["param"]["large_scale_dataset"] == "no":
             test_dataset = train_dataset = val_dataset = dataset[0]
+        else:
+             train_dataset, val_dataset, test_dataset  = Load_nc_data(dataset[0])
         in_channels = dataset[0].x.shape[1]
         num_class = dataset.num_classes
+
     elif type_task == "graph_anomaly":
         if config['dataset']['dataset_name'] in ["elliptic", "yelp"]:
             test_dataset = train_dataset = val_dataset  = dataset
@@ -147,14 +147,6 @@ def load_dataset(dataset, batch_dim=Batch_Size):
     add_config("dataset", "len_valdata", len(val_dataset))
 
     return train_dataset, val_dataset, test_dataset, in_channels, num_class
-
-
-
-
-
-
-
-
 
 
 
@@ -188,6 +180,22 @@ def shuffle_dataset(dataset):
     return train_dataset, train_dataset, train_dataset
 
 
+def Load_nc_data(data):
+    cluster_data = ClusterData(data, num_parts=128)
+    loader = ClusterLoader(cluster_data, batch_size=32, shuffle=True)
+    set_seed()
+
+    train_size=int(data.num_nodes*0.8)
+    val_size=int(data.num_nodes*0.1)
+
+    data.train_mask = torch.zeros(data.num_nodes, dtype=torch.uint8)
+    data.train_mask[:-train_size] = 1
+    data.val_mask = torch.zeros(data.num_nodes, dtype=torch.uint8)
+    data.val_mask[-2*val_size: -val_size] = 1
+    data.test_mask = torch.zeros(data.num_nodes, dtype=torch.uint8)
+    data.test_mask[-val_size:] = 1
+    return data
+
 def Load_nc_data(data, shuffle=True):
     set_seed()
     if shuffle:
@@ -212,17 +220,28 @@ def Load_nc_data(data, shuffle=True):
     return data
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 def get_fraud_edge_index():
     set_seed()
     data = loadmat(f'{config["dataset"]["dataset_root"]}/{config["dataset"]["dataset_name"]}.mat')
     if config["dataset"]["dataset_name"] == "YelpChi":
-        # data_rur = data['net_rur']
-        # data_rtr = data['net_rtr']
-        # data_rsr = data['net_rsr']
         data_homo = data['homo']
-        # sparse_to_adjlist(data_rur, config["dataset"]["dataset_root"] + 'yelp_rur_adjlists.pickle')
-        # sparse_to_adjlist(data_rtr, config["dataset"]["dataset_root"] + 'yelp_rtr_adjlists.pickle')
-        # sparse_to_adjlist(data_rsr, config["dataset"]["dataset_root"] + 'yelp_rsr_adjlists.pickle')
         sparse_to_adjlist(data_homo, config["dataset"]["dataset_root"] + 'yelp_homo_adjlists.pickle')
         with open(config["dataset"]["dataset_root"] + 'yelp_homo_adjlists.pickle', 'rb') as file:
             homo_edge_list = pickle.load(file)
@@ -243,13 +262,8 @@ def get_fraud_edge_index():
 
     elif config["dataset"]["dataset_name"] == "Amazon":
         data = loadmat(f'{config["dataset"]["dataset_root"]}/{config["dataset"]["dataset_name"]}.mat')
-        # data_upu = data['net_upu']
-        # data_usu = data['net_usu']
-        # data_uvu = data['net_uvu']
         data_homo = data['homo']
-        # sparse_to_adjlist(data_upu, config["dataset"]["dataset_root"] + 'amz_upu_adjlists.pickle')
-        # sparse_to_adjlist(data_usu, config["dataset"]["dataset_root"] + 'amz_usu_adjlists.pickle')
-        # sparse_to_adjlist(data_uvu, config["dataset"]["dataset_root"] + 'amz_uvu_adjlists.pickle')
+
         sparse_to_adjlist(data_homo, config["dataset"]["dataset_root"] + 'amazon_homo_adjlists.pickle')
 
         with open(config["dataset"]["dataset_root"] + 'amazon_homo_adjlists.pickle', 'rb') as file:

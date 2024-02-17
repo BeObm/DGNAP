@@ -22,15 +22,15 @@ if __name__ == "__main__":
     set_seed()
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", help="Dataset name", default="PROTEINS")
-    parser.add_argument("--type_task", help="type_task name", default="graph_classification", choices=["graph_anomaly", "graph_classification", "graph_regression","node_classification"])
-    parser.add_argument("--search_space_name", help="search space name", default="spatial_gnap_gl_space")
-    parser.add_argument("--sp_reduce", type=str, default="shapley_values", choices=["none", "probs", "gradients", "shapley_values"],help="search_space_reduction_strategy")
+    parser.add_argument("--dataset", help="Dataset name", default="CS")
+    parser.add_argument("--type_task", help="type_task name", default="node_classification", choices=["graph_anomaly", "graph_classification", "graph_regression","node_classification"])
+    parser.add_argument("--search_space_name", help="search space name", default="spatial_gnap_nl_space")
+    parser.add_argument("--sp_reduce", type=str, default="none", choices=["none", "probs", "gradients", "shapley_values"],help="search_space_reduction_strategy")
     parser.add_argument("--search_metric", type=str, default="Accuracy_score", help="metric for search guidance")
     parser.add_argument("--best_search_metric_rule", type=str, default="max", help="best search metric rule",choices=["min","max"]) # "GNN_ranking","GNN_performance"
-    parser.add_argument("--predictor", type=str, default="GNN_performance", help="predictor type") # "GNN_ranking","GNN_performance"
-    parser.add_argument("--predictor_criterion", type=str, default="MSELoss", help="loss function for predictor", choices=["MSELoss","PairwiseLoss", "MarginRankingLoss"])
-    parser.add_argument("--nb_gpu", type=str, default=2, help="Number of GPU")
+    parser.add_argument("--predictor", type=str, default="GNN_ranking", help="predictor type") # "GNN_ranking","GNN_performance"
+    parser.add_argument("--predictor_criterion", type=str, default="MarginRankingLoss", help="loss function for predictor", choices=["MSELoss","PairwiseLoss", "MarginRankingLoss"])
+    parser.add_argument("--nb_gpu", type=str, default=3, help="Number of GPU")
     args = parser.parse_args()
     create_config_file(args.type_task,args.dataset)
     manage_budget()
@@ -74,5 +74,3 @@ if __name__ == "__main__":
     # performance = get_test_performance(best_model, dataset)
     write_results(best_model, performance)
     # Generate_time_cost()
-
-

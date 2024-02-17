@@ -9,19 +9,19 @@ from search_algo.utils import *
 from torch_geometric.data import Data
 from torch_geometric.loader import DataLoader
 from load_data.load_predictor_dataset import *
-from search_space_manager.search_space import *
+# from search_space_manager.search_space import *
 from search_space_manager.sample_models import *
 from search_algo.DDP import *
 from copy import deepcopy
-from predictor_models import *
+from sklearn.tree import DecisionTreeRegressor
+# from predictor_models import *
 import importlib
 import torch.optim as optim
 import shap
 import pandas as pd
 import numpy as np
-from sklearn.linear_model import LinearRegression
-from sklearn.metrics import mean_squared_error
-from sklearn.model_selection import train_test_split
+from predictor_models.utils import get_target
+
 device=torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
@@ -200,22 +200,33 @@ def feat_coef_reduce_and_rank(e_search_space, predictor_graph_edge_index,
         raise ValueError("Wrong pre-trained predictor path")
     base_space = deepcopy(e_search_space)
     total_importance = []
-    train_loader, val_loader, feature_size = load_predictor_dataset(predictor_dataset_folder)
+    train_loader, _, feature_size = load_predictor_dataset(predictor_dataset_folder,typ="coef")
     pred_Batch_Size = int(config["predictor"]["pred_Batch_Size"])
-    train_loader = DataLoader(train_loader, batch_size=pred_Batch_Size, shuffle=True)
-    val_loader = DataLoader(val_loader, batch_size=pred_Batch_Size, shuffle=False)
-    criterion = map_predictor_criterion(config["predictor"]["criterion"])
 
-    for data_loader in [train_loader, val_loader]:
-        if feature_importance_source == "gradients":
-            feature_importance = compute_gradient_feature_importance(predictor_model, data_loader, criterion)
-        elif feature_importance_source == "shapley_values":
-            feature_importance = compute_shapley_value(predictor_model, data_loader, criterion)
-        else:
-            raise ValueError("Wrong value for feature importance computation type")
-        total_importance.append(feature_importance)
-    fi = torch.mean(torch.cat(total_importance, dim=0), dim=0).tolist()
+    criterion = map_predictor_criterion(config["predictor"]["criterion"])
+    reduction_start_time = time.time()
+    total_importance=[]
+
+    if feature_importance_source == "gradients":
+        feature_importance = compute_gradient_feature_importance(predictor_model, train_loader, criterion)
+        # print(f"feature importance size is:, |Type: {type(feature_importance)}| Size{feature_importance.shape}")
+        # print(" this is feature importance :", feature_importance)
+    elif feature_importance_source == "shapley_values":
+        feature_importance = compute_shapley_value()# predictor_model, train_loader, criterion
+        print("feature importance size is:", len(feature_importance))
+    else:
+        raise ValueError("Wrong value for feature importance computation type")
+
+    if feature_importance_source == "shapley_values":
+        grouped_data = list(zip(*feature_importance))
+        # Calculate the mean for each group
+        fi = [sum(group) / len(group) for group in grouped_data]
+        print("This is the final fi", fi)
+    else:
+        fi = torch.mean(feature_importance, dim=0).tolist()
     print(f"Feature importance details is as follows: | # features:{len(fi)}| max:{max(fi)} |Min:{min(fi)} ")
+
+
     for fct, value in base_space.items():  # this loop to remove all options that decrease the model performance
         for option, option_details in value.items():
             option_importance = fi[option_details[0]]
@@ -234,8 +245,9 @@ def feat_coef_reduce_and_rank(e_search_space, predictor_graph_edge_index,
                         print(f"The option {option} with importance {option_importance} is removed from the search space")
                     else:
                         print(f"The option {option} is no longer present in the search space")
-    get_final_sp_details(e_search_space)
 
+    add_config("time", "sp_reduce", round(time.time() - reduction_start_time, 4))
+    get_final_sp_details(e_search_space)
     sample_list = random_sampling(e_search_space=e_search_space, n_sample=0, predictor=True)
     lists = [elt for elt in range(0, len(sample_list), int(config["param"]["batch_sample"]))]
     TopK_models = []
@@ -276,27 +288,50 @@ def feat_coef_reduce_and_rank(e_search_space, predictor_graph_edge_index,
     TopK_model.to_excel(f"{config['path']['result_folder']}/Topk_model_configs.xlsx")
     return TopK_final
 
-def compute_shapley_value(model, sample_input, num_samples=100):
+def compute_shapley_value():
+    nsamples = int(config["param"]["shapley_nsamples"])
+    start_time = time.time()
+    from sklearn.ensemble import RandomForestRegressor
+    from sklearn.ensemble import StackingRegressor
+    shap_type = config["param"]["shapley_shap_type"]
     dataset_file=f'{config["path"]["result_folder"]}/shapley_dataset.csv'
     search_metric = config["param"]["search_metric"]
     shap.initjs()
-    df = pd.read_csv(dataset_file)
+    try:
+         df = pd.read_csv(dataset_file)
+    except:
+        df = pd.read_csv("data/shapley_dataset.csv")
+    df = df[:nsamples].sample(frac=1).reset_index(drop=True)
     X= df.drop(search_metric,axis=1)
     Y = df[search_metric]
-    X_encoded = pd.get_dummies(X, drop_first=True)
 
-    X_train, X_test, Y_train, Y_test = train_test_split(X_encoded,Y, test_size=0.2, random_state=num_seed)
-    clf = LinearRegression(fit_intercept=True)
-    clf.fit(X_train, Y_train)
-    explainer=shap.Explainer(clf)
-    shap_value= explainer.shap_values(X_test)
+    # X_encoded = pd.get_dummies(X, drop_first=True)
+    # X_train, X_test, Y_train, Y_test = train_test_split(X_encoded,Y, test_size=0.2, random_state=num_seed)
+    if shap_type == "kernel":
+        stkr = StackingRegressor(
+            estimators=[ ('rfr', RandomForestRegressor())],
+            final_estimator=RandomForestRegressor(),
+            cv=3
+        )
+        model = stkr.fit(X, Y)
+
+        # explainer = shap.KernelExplainer(model.predict, X,algorithm="sampling")
+        explainer = shap.TreeExplainer(model.predict, X)
+        shap_value = explainer.shap_values(X)
+        shap.summary_plot(shap_value, X, plot_type="bar")
+    elif shap_type == "tree":
+        model = DecisionTreeRegressor(max_depth=2)
+        model.fit(X, Y)
+        explainer = shap.TreeExplainer(model.predict, X, algorithm="sampling")
+        shap_value = explainer.shap_values(X, nsamples=nsamples)
+        shap.summary_plot(shap_value, X, plot_type="bar")
+
+
     print(f"Shapley values are as follows: | # samples:{len(shap_value)}")
     print(shap_value)
+    print(f"Shapley computation time is {round((time.time() - start_time)/60, 4)} Minutes")
+
     return shap_value
-
-
-
-
 
 
 def compute_gradient_feature_importance(model, sample_dataset, criterion):
@@ -307,7 +342,12 @@ def compute_gradient_feature_importance(model, sample_dataset, criterion):
         optimizer = optim.SGD([data.x], lr=0.01)
         data = data.to(device)
         output = model(data)
-        loss = criterion(output, data.y)
+        if (config["predictor"]["Predictor_model"]=="GNN_performance"):
+            loss = criterion(output, data.y)
+        elif (config["predictor"]["Predictor_model"]=="GNN_ranking"):
+            target = get_target(data.y, output).to(device)
+            loss = criterion(output, data.y,target)
+
         # Backward pass to compute gradients
         optimizer.zero_grad()
         data.x.retain_grad()
@@ -340,6 +380,7 @@ def prob_reduce_and_rank(e_search_space, predictor_graph_edge_index, feature_siz
         raise ValueError("Wrong pre-trained predictor path")
     base_space = {}
     rnd = 1
+    reduction_start_time = time.time()
     while base_space != e_search_space:
         TopK_models = []
         c_count = {}
@@ -389,7 +430,7 @@ def prob_reduce_and_rank(e_search_space, predictor_graph_edge_index, feature_siz
                     c_count[elt[0]][option_decoder[elt[1]]] = 0
         for fct, fct_count in c_count.items():  # this loop to remove all option with low ratio in the search space
             for option, option_count in fct_count.items():
-                option_ratio = option_count / len(TopK_model)
+                option_ratio = (option_count /(len(TopK_model)/len(fct_count)))/len(fct_count)
                 if option_ratio < ratio_treshold:
                     if option in e_search_space[fct] and len(e_search_space[fct]) > 1:
                         e_search_space[fct].pop(option)
@@ -397,6 +438,7 @@ def prob_reduce_and_rank(e_search_space, predictor_graph_edge_index, feature_siz
                         print(f"The option {option} is no longer present in the search space")
         print(f"The search space after {rnd} is : {e_search_space}")
         rnd += 1
+    add_config("time", "sp_reduce", round(time.time() - reduction_start_time, 4))
     get_final_sp_details(e_search_space)
 
     sample_list = random_sampling(e_search_space=e_search_space, n_sample=0, predictor=True)

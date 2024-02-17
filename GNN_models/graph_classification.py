@@ -174,3 +174,6 @@ def test_function(accelerator, model, test_loader, type_data="val"):
     performance_scores = evaluate_model(true_labels, pred_labels,type_data)
 
     return performance_scores
+
+
+

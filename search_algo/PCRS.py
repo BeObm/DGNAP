@@ -81,17 +81,19 @@ def get_performance_distributions(e_search_space,
         # =**======**======**======**===  transform model configuration into predictor training sample data ===**======**======**=
 
         if (config["predictor"]["predictor_dataset_type"]) == "graph":
-            x,mode_config_choice = get_nodes_features(submodel, e_search_space)
+            x,model_config_choice = get_nodes_features(submodel, e_search_space)
             y = np.array(model_performance)
             y = torch.tensor(y, dtype=torch.float32).view(-1, 1)
             graphdata = Data(x=x, edge_index=edge_index, y=y, num_nodes=x.shape[0],
                              model_config_choices=deepcopy(submodel))
             graph_list.append(graphdata)
             torch.save(graphdata, f"{config['path']['predictor_dataset_folder']}/graph{no + 1}_{x.shape[1]}Feats.pt")
-            for function, option in submodel.items():
 
-
-                shapley_dataset[function].append(option[0])
+            one_hot = np.zeros(len(list_of_choice), dtype=int)
+            for elt in model_config_choice:
+                one_hot[elt[1] - 1] = 1
+            for id, option in enumerate(list_of_choice):
+                shapley_dataset[id].append(one_hot[id])
             shapley_dataset[search_metric].append(model_performance)
 
 

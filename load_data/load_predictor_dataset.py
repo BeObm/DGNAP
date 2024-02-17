@@ -4,7 +4,7 @@ import glob
 import torch
 
 
-def load_predictor_dataset(dataset_source_path):
+def load_predictor_dataset(dataset_source_path,typ=""):
     set_seed()
     graphlist = []
     pred_Batch_Size = int(config["predictor"]["pred_Batch_Size"])
@@ -14,7 +14,11 @@ def load_predictor_dataset(dataset_source_path):
         graphlist.append(data)
 
     graph_list = graphlist[:int(config["param"]["n"])]
-    val_size = int(len(graph_list) * 20 / 100)
+    if typ == "coef":
+        val_size=0
+    else:
+        val_size = int(len(graph_list) * 20 / 100)
+
 
     val_dataset = graph_list[:val_size]
     train_dataset = graph_list[val_size:]

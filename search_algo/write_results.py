@@ -34,6 +34,7 @@ def write_results(best_model, test_performances_record):
         results.write(f'Number of TopK models: {int(config["param"]["k"])}\n')
         results.write(f'Best sampled model: {best_model}\n')
         results.write(f'Best Sampled model {search_metric}: {float(config["results"][f"{search_metric}_of_best_sampled_model"])}\n')
+        results.write(f'f"Best_model_{search_metric}": {float(config["results"][f"Best_model_{search_metric}"])}\n')
 
         for metric in predictor_metric:
             results.write(f'predictor {metric}: |Train= {float(config["predictor"][f"{metric}_train"])} |Val={float(config["predictor"][f"{metric}_val"])} |Test={float(config["predictor"][f"{metric}_test"])} \n')
@@ -72,6 +73,7 @@ def write_results(best_model, test_performances_record):
     print(f'Number of TopK models: {int(config["param"]["k"])}\n')
     print(f'Best sampled  model: {best_model}\n')
     print(f'Best Sampled model {search_metric}: {float(config["results"][f"{search_metric}_of_best_sampled_model"])}\n')
+    print(f'f"Best_model_{search_metric}": {float(config["results"][f"Best_model_{search_metric}"])}\n')
 
     for metric in predictor_metric:
         print(f'predictor {metric}: |Train= {float(config["predictor"][f"{metric}_train"])} |Val={float(config["predictor"][f"{metric}_val"])} |Test={float(config["predictor"][f"{metric}_test"])} \n')

@@ -133,31 +133,40 @@ class GNN_Model(MessagePassing):
 
 
 
-def train_function(model, train_loader, criterion, optimizer):
+def train_function(model, dataloader, criterion, optimizer,accelerator):
     model.train()
-    loss_all = 0
-    for data in  train_loader:
-        data = data.to(devise)
-        train_mask = data.train_mask.bool()
+    total_loss = 0
+    for data in dataloader:
+        # train_mask = data.train_mask.bool()
         optimizer.zero_grad()
         out = model(data)
-        train_loss = criterion(out[train_mask], data.y[train_mask])
-        train_loss.backward()
+        loss = criterion(out[data.train_mask], data.y[data.train_mask])
+        accelerator.backward(loss)
         optimizer.step()
-        loss_all += train_loss
-    return float(train_loss/len(train_loss))  # ,train_acc
+        total_loss += loss.item()
+    return float(total_loss/len(dataloader))
 
 
 @torch.no_grad()
-def test_function(model, data, type_data="val"):
-    performance_scores = {}
+def test_function(accelerator, model, test_loader, type_data="val"):
     model.eval()
-    data = data.to(devise)
-    out = model(data)
-    if type_data == 'val':
-        mask = data.val_mask.bool()
-    if type_data == 'test':
-        mask = data.test_mask.bool()
-    pred = out.argmax(dim=1)
-    performance_scores = evaluate_model(data.y[mask].detach().cpu().numpy(), pred[mask].detach().cpu().numpy(),type_data)
+    true_labels = []
+    pred_labels = []
+    for data in test_loader:
+
+        if type_data == 'val':
+            mask = data.val_mask.bool()
+        if type_data == 'test':
+            mask = data.test_mask.bool()
+        if type_data == 'train':
+            mask = data.train_mask.bool()
+        out = model(data)
+        pred = out.argmax(dim=1)
+        all_targets = accelerator.gather(data.y[mask])
+        all_pred = accelerator.gather(pred[mask])
+        true_labels.extend(all_targets.detach().cpu().numpy())
+        pred_labels.extend(all_pred.detach().cpu().numpy())
+    # performance_scores = evaluate_model(data.y[mask].detach().cpu().numpy(), pred[mask].detach().cpu().numpy(),type_data)
+    performance_scores = evaluate_model(true_labels, pred_labels, type_data)
     return performance_scores
+
