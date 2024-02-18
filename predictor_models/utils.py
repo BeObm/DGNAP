@@ -10,7 +10,7 @@ from sklearn.metrics import mean_squared_error, r2_score
 from sklearn.metrics import average_precision_score, ndcg_score, roc_auc_score
 import torch
 import torch.nn.functional as F
-from torch.utils.data import DataLoader, Dataset
+from torch_geometric.loader import DataLoader
 from sklearn.metrics import roc_auc_score, average_precision_score, auc, precision_recall_curve, matthews_corrcoef, \
     balanced_accuracy_score, accuracy_score
 import itertools
@@ -178,3 +178,7 @@ def evaluate_model_predictor(y_true, y_pred, metrics_list, title="Predictor trai
     return predictor_performances
 
 
+def prepare_predictor_data_loader(data, batch_size=32,shuffle=False):
+
+    dataloader = DataLoader(data, batch_size=batch_size,drop_last=False, shuffle=shuffle)
+    return dataloader

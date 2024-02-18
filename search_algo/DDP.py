@@ -3,7 +3,7 @@ from collections import OrderedDict
 import torch
 import torch.nn.functional as F
 # from torch.utils.data import Dataset, DataLoader
-from torch_geometric.loader import DataLoader
+from torch_geometric.loader import DataLoader,ClusterLoader, ClusterData, NeighborLoader
 import torch
 import torch.distributed as dist
 from torch.utils.data.distributed import DistributedSampler
@@ -19,8 +19,21 @@ from accelerate import Accelerator
 from accelerate import DistributedDataParallelKwargs
 
 
-def prepare_data_loader(dataset, batch_size=32,shuffle=False):
-    dataloader = DataLoader(dataset, batch_size=batch_size,drop_last=False, shuffle=shuffle)
+def prepare_data_loader(data, batch_size=32,shuffle=False):
+
+    if config["dataset"]["type_task"] =="node_classification":
+        cluster_data = ClusterData(data, num_parts=128)
+        dataloader = ClusterLoader(cluster_data, batch_size=batch_size, shuffle=True)
+        # loader = NeighborLoader(
+        #     data,
+        #     # Sample 30 neighbors for each node for 2 iterations
+        #     num_neighbors=[30] * 2,
+        #     # Use a batch size of 128 for sampling training nodes
+        #     batch_size=128,
+        #     input_nodes=None,
+        # )
+    else:
+        dataloader = DataLoader(data, batch_size=batch_size,drop_last=False, shuffle=shuffle)
     return dataloader
 
     

@@ -40,11 +40,13 @@ def get_performance_distributions(e_search_space,
     graph_list = []
 
     train_dataset, val_dataset, test_dataset, in_channels, num_class = load_dataset(dataset)
+    train_dataset = prepare_data_loader(train_dataset,batch_size=Batch_Size,shuffle=True)
+    val_dataset = prepare_data_loader(val_dataset,batch_size=Batch_Size,shuffle=False)
 
     pbar = tqdm(total=len(model_list))
     pbar.set_description("training samples")
     for no, submodel in enumerate(model_list):
-        txt_model = f"Model_Config: {[submodel[opt][0] for opt in submodel.keys()]} "
+        # txt_model = f"Model_Config: {[submodel[opt][0] for opt in submodel.keys()]} "
         submodel_config = {}
         # extract the model config choices
         for key, value in submodel.items():
@@ -60,7 +62,7 @@ def get_performance_distributions(e_search_space,
                                       numround=num_run_sample,
                                       shared_weight=None,
                                       type_data="val")
-        print('Training finished')
+
         if metric_rule == "max":
             if model_performance > best_performance:
                 best_performance = model_performance
@@ -109,7 +111,7 @@ def get_performance_distributions(e_search_space,
                 f"{'++' * 10} Incorrect predictor_dataset_type)")
             sys.exit()
 
-        pbar.write(f"{txt_model} | {search_metric}:{round(model_performance,5)}")
+        # pbar.write(f"{txt_model} | {search_metric}:{round(model_performance,5)}")
         pbar.set_description(f"Training samples.|Best {search_metric}={round(best_performance,5)}")
         pbar.update(1)
     distribution_time = round(time.time() - timestart, 2)
@@ -184,6 +186,8 @@ def get_best_model(topk_list, option_decoder, dataset):
                         dict_model[function] = option_decoder[row[function]]
 
         train_dataset, val_dataset, test_dataset, in_channels, num_class = load_dataset(dataset)
+        train_dataset = prepare_data_loader(train_dataset, batch_size=Batch_Size, shuffle=True)
+        val_dataset = prepare_data_loader(val_dataset, batch_size=Batch_Size, shuffle=False)
 
         sys.stdout.write(f"Architecture {num_model}/{len(topk_list)}:{[dict_model[opt] for opt in dict_model.keys()]} ")
         model_performance = run_model(submodel_config=dict_model,
@@ -291,14 +295,14 @@ def run_model(submodel_config, train_data, test_data, in_chanels,
                    total_epochs=epochs,
                    model_to_train=new_model,
                    optimizer=optimizer,
-                   train_dataloader=prepare_data_loader(train_data,batch_size=Batch_Size,shuffle=True),
+                   train_dataloader=train_data,
                    criterion=criterion,
                    model_trainer=train_model)
 
         # trainer = (trainer.module if isinstance(trainer, DistributedDataParallel) else trainer)
         trainer.eval()
         performance_score = test_model(model=trainer,
-                                       test_loader=accelerator.prepare(prepare_data_loader(test_data)),
+                                       test_loader=accelerator.prepare(test_data),
                                        accelerator=accelerator,
                                        type_data=type_data)
         performance_record.append(performance_score[search_metric])

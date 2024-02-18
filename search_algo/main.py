@@ -22,9 +22,9 @@ if __name__ == "__main__":
     set_seed()
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", help="Dataset name", default="PROTEINS")
-    parser.add_argument("--type_task", help="type_task name", default="graph_classification", choices=["graph_anomaly", "graph_classification", "graph_regression","node_classification"])
-    parser.add_argument("--search_space_name", help="search space name", default="spatial_gnap_gl_space")
+    parser.add_argument("--dataset", help="Dataset name", default="Cora")
+    parser.add_argument("--type_task", help="type_task name", default="node_classification", choices=["graph_anomaly", "graph_classification", "graph_regression","node_classification"])
+    parser.add_argument("--search_space_name", help="search space name", default="spatial_gnap_nl_space")
     parser.add_argument("--sp_reduce", type=str, default="probs", choices=["none", "probs", "gradients", "shapley_values"],help="search_space_reduction_strategy")
     parser.add_argument("--search_metric", type=str, default="Accuracy_score", help="metric for search guidance")
     parser.add_argument("--predictor", type=str, default="GNN_ranking", help="predictor type") # "GNN_ranking","GNN_performance"

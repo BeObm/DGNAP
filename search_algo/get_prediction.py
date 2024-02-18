@@ -64,6 +64,10 @@ def train_predictor_using_graph_dataset(predictor_dataset_folder):
     num_epoch = int(config["predictor"]["num_epoch"])
     start_train_time = time.time()
     train_data, val_data, feature_size = load_predictor_dataset(predictor_dataset_folder)
+    train_data = prepare_predictor_data_loader(train_data, batch_size=Batch_Size, shuffle=True)
+    val_data = prepare_predictor_data_loader(val_data, batch_size=Batch_Size, shuffle=False)
+
+
     ddp_kwargs = DistributedDataParallelKwargs(find_unused_parameters=True)
     accelerator = Accelerator(kwargs_handlers=[ddp_kwargs])
     predictor, train_predictor, test_predictor = get_PredictorModel(config["predictor"]["Predictor_model"])
@@ -83,7 +87,7 @@ def train_predictor_using_graph_dataset(predictor_dataset_folder):
                                       total_epochs=num_epoch,
                                       model_to_train=predictor_model,
                                       optimizer=optimizer,
-                                      train_dataloader=prepare_data_loader(train_data,batch_size=Batch_Size),
+                                      train_dataloader=train_data,
                                       criterion=criterion,
                                       model_trainer=train_predictor)
 
@@ -93,7 +97,7 @@ def train_predictor_using_graph_dataset(predictor_dataset_folder):
     metrics_list = map_predictor_metrics()
     predictor_performance = test_predictor(accelerator=accelerator,
                                            model=best_predictor_model,
-                                           test_loader=accelerator.prepare(prepare_data_loader(train_data)),
+                                           test_loader=accelerator.prepare(train_data),
                                            metrics_list=metrics_list,
                                            title="Predictor training test")
 
@@ -105,7 +109,7 @@ def train_predictor_using_graph_dataset(predictor_dataset_folder):
 
     predictor_performance = test_predictor(accelerator=accelerator,
                                            model=best_predictor_model,
-                                           test_loader=accelerator.prepare(prepare_data_loader(val_data)),
+                                           test_loader=accelerator.prepare(val_data),
                                            metrics_list=metrics_list,
                                            title="Predictor validation test")
     for metric, value in predictor_performance.items():

@@ -25,7 +25,6 @@ class GNN_Model(MessagePassing):
         self.type_task = config["dataset"]["type_task"]
         self.gnnConv1 = param_dict['gnnConv1'][0]
         self.gnnConv2 = param_dict['gnnConv2'][0]
-        self.global_pooling = param_dict['pooling']
         self.activation1 = param_dict['activation1']
         self.activation2 = param_dict['activation2']
         self.dropout1 = param_dict['dropout1']
@@ -140,10 +139,11 @@ def train_function(model, dataloader, criterion, optimizer,accelerator):
         # train_mask = data.train_mask.bool()
         optimizer.zero_grad()
         out = model(data)
-        loss = criterion(out[data.train_mask], data.y[data.train_mask])
+        loss = criterion(out[data.train_mask.bool()], data.y[data.train_mask.bool()])
         accelerator.backward(loss)
         optimizer.step()
         total_loss += loss.item()
+
     return float(total_loss/len(dataloader))
 
 
@@ -162,10 +162,10 @@ def test_function(accelerator, model, test_loader, type_data="val"):
             mask = data.train_mask.bool()
         out = model(data)
         pred = out.argmax(dim=1)
-        all_targets = accelerator.gather(data.y[mask])
-        all_pred = accelerator.gather(pred[mask])
-        true_labels.extend(all_targets.detach().cpu().numpy())
-        pred_labels.extend(all_pred.detach().cpu().numpy())
+        # all_targets = accelerator.gather(data.y[mask])
+        # all_pred = accelerator.gather(pred[mask])
+        true_labels.extend(data.y[mask].detach().cpu().numpy())
+        pred_labels.extend(pred[mask].detach().cpu().numpy())
     # performance_scores = evaluate_model(data.y[mask].detach().cpu().numpy(), pred[mask].detach().cpu().numpy(),type_data)
     performance_scores = evaluate_model(true_labels, pred_labels, type_data)
     return performance_scores

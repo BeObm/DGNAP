@@ -7,7 +7,7 @@ from torch import cat
 from torch_geometric.data import Data
 from load_data.graph_anomaly import *
 import torch_geometric.transforms as T
-from torch_geometric.loader import DataLoader, ClusterLoader,ClusterData
+from torch_geometric.loader import DataLoader, ClusterLoader,ClusterData,NeighborLoader
 from torch_geometric.datasets import TUDataset, PPI, Planetoid, Coauthor, Amazon, Flickr, FacebookPagePage
 
 from scipy.io import loadmat
@@ -111,10 +111,8 @@ def load_dataset(dataset):
     set_seed()
 
     if type_task == "node_classification":
-        if config["param"]["large_scale_dataset"] == "no":
-            test_dataset = train_dataset = val_dataset = dataset[0]
-        else:
-             train_dataset, val_dataset, test_dataset  = Load_nc_data(dataset[0])
+
+        test_dataset = train_dataset = val_dataset = load_nc_data(dataset[0])
         in_channels = dataset[0].x.shape[1]
         num_class = dataset.num_classes
 
@@ -180,59 +178,26 @@ def shuffle_dataset(dataset):
     return train_dataset, train_dataset, train_dataset
 
 
-def Load_nc_data(data):
-    cluster_data = ClusterData(data, num_parts=128)
-    loader = ClusterLoader(cluster_data, batch_size=32, shuffle=True)
-    set_seed()
-
-    train_size=int(data.num_nodes*0.8)
-    val_size=int(data.num_nodes*0.1)
+def load_nc_data(data):
 
     data.train_mask = torch.zeros(data.num_nodes, dtype=torch.uint8)
-    data.train_mask[:-train_size] = 1
+    data.train_mask[1000:] = 1
     data.val_mask = torch.zeros(data.num_nodes, dtype=torch.uint8)
-    data.val_mask[-2*val_size: -val_size] = 1
+    data.val_mask[: 500] = 1
     data.test_mask = torch.zeros(data.num_nodes, dtype=torch.uint8)
-    data.test_mask[-val_size:] = 1
+    data.test_mask[500:1000] = 1
+
+    # data = dataset[0]
+    # train_size = int(data.num_nodes * 0.8)
+    # val_size = int(data.num_nodes * 0.1)
+    # data.train_mask = torch.zeros(data.num_nodes, dtype=torch.uint8)
+    # data.train_mask[:-train_size] = 1
+    # data.val_mask = torch.zeros(data.num_nodes, dtype=torch.uint8)
+    # data.val_mask[-2 * val_size: -val_size] = 1
+    # data.test_mask = torch.zeros(data.num_nodes, dtype=torch.uint8)
+    # data.test_mask[-val_size:] = 1
+
     return data
-
-def Load_nc_data(data, shuffle=True):
-    set_seed()
-    if shuffle:
-        indices = torch.randperm(data.x.size(0))
-        data.train_mask = index_to_mask(indices[1000:], size=data.num_nodes)
-        data.val_mask = index_to_mask(indices[500:1000], size=data.num_nodes)
-        data.test_mask = index_to_mask(indices[:500], size=data.num_nodes)
-    else:
-        # data.train_mask = torch.zeros(data.num_nodes, dtype=torch.uint8)
-        # data.train_mask[:1000] = 1
-        # data.val_mask = torch.zeros(data.num_nodes, dtype=torch.uint8)
-        # data.val_mask[1000: 1500] = 1
-        # data.test_mask = torch.zeros(data.num_nodes, dtype=torch.uint8)
-        # data.test_mask[1500:2000] = 1
-
-        data.train_mask = torch.zeros(data.num_nodes, dtype=torch.uint8)
-        data.train_mask[:-1000] = 1
-        data.val_mask = torch.zeros(data.num_nodes, dtype=torch.uint8)
-        data.val_mask[-1000: -500] = 1
-        data.test_mask = torch.zeros(data.num_nodes, dtype=torch.uint8)
-        data.test_mask[-500:] = 1
-    return data
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

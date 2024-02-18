@@ -56,16 +56,16 @@ def create_config_file(type_task, dataset_name):
         'config_filename': config_filename,
         "run_code": RunCode,
         "budget": 1500,
-        "k": 100,
+        "k": 150,
         "z_sample": 1,  # Number of time  sampled models are trained before we report their performance
         "z_topk": 1,
         "z_final": 2,
-        "train_ratio": 0.4,
+        "train_ratio": 0.8,
         "nfcode": 56,  # number of digit for each function code when using embedding method
         "noptioncode": 8,
-        "sample_model_epochs": 150,
-        "topk_model_epochs": 150,
-        "best_model_epochs": 150,
+        "sample_model_epochs": 400,
+        "topk_model_epochs": 400,
+        "best_model_epochs": 400,
         "patience": 100,
         "encoding_method": "one_hot",  # ={one_hot, embedding,index_embedding}
         "type_sampling": "controlled_stratified_sampling",
@@ -73,8 +73,6 @@ def create_config_file(type_task, dataset_name):
         "feature_size_choice": "total_choices",
         # total_functions total_choices  # for one hot encoding using graph dataset for predictor, use"total choices
         'type_input_graph': "directed",
-        "use_full_dataset": "no",
-        "large_scale_dataset": "yes",
         "predict_sample": 500000,
         "shapley_shap_type":"tree",  # kernel
         "shapley_nsamples":600,
@@ -118,7 +116,7 @@ def add_config(section_, key_, value_, ):
 def get_initial_best_performance():
     metric_rule = config["param"]["best_search_metric_rule"]
     if metric_rule == 'max':
-        return -99999999
+        return 0
     elif metric_rule == 'min':
         return 99999999
     else:

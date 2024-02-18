@@ -168,7 +168,7 @@ def create_spatial_gnap_nl_space():  # a<b
     activation = ["Relu", "Elu", "linear", "Softplus", "sigmoid", "tanh", "relu6"]
     multi_head = [1]
     hidden_channels = [16, 64, 128]
-    normalizer = ["GraphNorm", "InstanceNorm"]
+    normalizer = ["GraphNorm", "InstanceNorm","BatchNorm"]
     dropout = [0.0, 0.3, 0.5, 0.7]
     sp = {'gnnConv1': attention, 'gnnConv2': attention, 'aggregation1': agregation, 'aggregation2': agregation,
           'normalize1': normalizer, 'normalize2': normalizer, 'activation1': activation, 'activation2': activation,
@@ -215,8 +215,7 @@ def create_spatial_gnap_nl_space():  # a<b
 
     return e_search_space, option_decoder, edge_dict
 
-
-def create_baselines_gl_space(a=0, b=1):  # a<b
+def create_baselines_gl_space():
 
     attention = ["GCNConv", "GENConv", "linear", "SGConv", 'LEConv', 'ClusterGCNConv', "GATConv"]
     agregation = ['add', "max", "mean"]
@@ -272,7 +271,7 @@ def create_baselines_gl_space(a=0, b=1):  # a<b
     return e_search_space, option_decoder, edge_dict
 
 
-def create_baselines_nl_space(a=0, b=1):  # a<b
+def create_baselines_nl_space():
 
     attention = ["GCNConv", "GENConv", "linear", "SGConv", 'LEConv', 'ClusterGCNConv', "GATConv"]
     agregation = ['add', "max", "mean"]
