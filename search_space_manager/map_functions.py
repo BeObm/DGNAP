@@ -20,8 +20,6 @@ from search_space_manager.chebnet  import *
 from search_space_manager.appnp  import *
 from search_space_manager.sg  import *
 
-set_seed()
-
 def map_activation(function_name):
     if function_name.lower() =='relu6':
         return nn.ReLU6()

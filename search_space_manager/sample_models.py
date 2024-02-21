@@ -17,13 +17,12 @@ from settings.config_file import *
 
 
 def sample_models(n_sample, e_search_space):
-    set_seed()
     type_sample = config["param"]["type_sampling"]
     sampling_package = importlib.import_module("search_space_manager.sample_models")
     try:
         sample_function = getattr(sampling_package, type_sample)
     except:
-        raise ValueError("sampling type incorrect, please chek and try again !")
+        raise ValueError("sampling type incorrect, please check and try again !")
         # exit()
     return sample_function(n_sample, e_search_space)
 
@@ -79,14 +78,6 @@ def uniform_sampling(n_sample, e_search_space, predictor=False):
             model_dict[name] = (choice, e_search_space[name][choice][0], e_search_space[name][choice][1])
             temp_dict[name].remove(choice)
 
-        # force the multi head number to be 1 for convolution that does not apply multi-attention operation   
-        conv1 = map_gnn_model(model_dict["gnnConv1"][0])[0]
-        if len([a for a in lst if a in inspect.getfullargspec(conv1)[0]]) == 0:
-            model_dict["multi_head1"] = (1, e_search_space["multi_head1"][1][0], e_search_space["multi_head1"][1][1])
-
-        conv2 = map_gnn_model(model_dict["gnnConv2"][0])[0]
-        if len([a for a in lst if a in inspect.getfullargspec(conv2)[0]]) == 0:
-            model_dict["multi_head2"] = (1, e_search_space["multi_head2"][1][0], e_search_space["multi_head2"][1][1])
 
         if model_dict not in model_list:  # to avoid model's duplicate
             model_list.append(model_dict)
@@ -119,8 +110,6 @@ def controlled_stratified_sampling(n_sample, e_search_space, predictor=False):
 
         if model_dict not in model_list:  # to avoid model's duplicate
             model_list.append(model_dict)
-        else:
-            print("model already sampled, sampling again")
 
     model_list2 = []
     for function, option in e_search_space.items():
@@ -132,7 +121,7 @@ def controlled_stratified_sampling(n_sample, e_search_space, predictor=False):
 
     # print(model_list[:2])      
     # print("|n")      
-    # print(model_list2[:2])   
+    # print(model_list2[:2])
     return random.sample(model_list2, n_sample)
 
 
@@ -168,7 +157,7 @@ def random_sample_backup(e_search_space, n_sample=0, predictor=False):
         samples_list = df.to_dict('records')
         print("lenght of sampled list: ", len(samples_list))
     else:
-        print('I am sampling all models from a vast search space, please be patient ...!')
+        print('Sampling all models from a vast search space...')
         keys, values = zip(*e_search_space.items())
         samples_list = [dict(zip(keys, v)) for v in itertools.product(*values)]
         print("Total sampled models: ", len(samples_list))

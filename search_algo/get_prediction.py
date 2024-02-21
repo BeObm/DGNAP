@@ -3,7 +3,6 @@ import torch
 
 from settings.config_file import *
 
-import sys
 from predictor_models.utils import *
 from search_algo.utils import *
 from torch_geometric.data import Data
@@ -14,6 +13,8 @@ from search_space_manager.sample_models import *
 from search_algo.DDP import *
 from copy import deepcopy
 from sklearn.tree import DecisionTreeRegressor
+import xgboost
+from sklearn.model_selection import train_test_split
 # from predictor_models import *
 import importlib
 import torch.optim as optim
@@ -21,6 +22,8 @@ import shap
 import pandas as pd
 import numpy as np
 from predictor_models.utils import get_target
+from accelerate import Accelerator
+from accelerate import DistributedDataParallelKwargs
 
 device=torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -66,10 +69,10 @@ def train_predictor_using_graph_dataset(predictor_dataset_folder):
     train_data, val_data, feature_size = load_predictor_dataset(predictor_dataset_folder)
     train_data = prepare_predictor_data_loader(train_data, batch_size=Batch_Size, shuffle=True)
     val_data = prepare_predictor_data_loader(val_data, batch_size=Batch_Size, shuffle=False)
-
-
     ddp_kwargs = DistributedDataParallelKwargs(find_unused_parameters=True)
     accelerator = Accelerator(kwargs_handlers=[ddp_kwargs])
+
+
     predictor, train_predictor, test_predictor = get_PredictorModel(config["predictor"]["Predictor_model"])
     set_seed()
     predictor_model = predictor(
@@ -230,26 +233,31 @@ def feat_coef_reduce_and_rank(e_search_space, predictor_graph_edge_index,
         fi = torch.mean(feature_importance, dim=0).tolist()
     print(f"Feature importance details is as follows: | # features:{len(fi)}| max:{max(fi)} |Min:{min(fi)} ")
 
-
+    shap_summary=defaultdict(list)
     for fct, value in base_space.items():  # this loop to remove all options that decrease the model performance
         for option, option_details in value.items():
             option_importance = fi[option_details[0]]
+            shap_summary["Function"].append(fct)
+            shap_summary["Option"].append(option)
+            shap_summary["Shap_Value"].append(option_importance)
             if option_importance <= 0:
                 if option in e_search_space[fct] and len(e_search_space[fct]) > 1:
                     e_search_space[fct].pop(option)
                 else:
                     print(f"The option {option} is no longer present in the search space")
             else:
+                pass
                 # positive_values = [xn for xn in fi if xn >= 0]
-                # mean_ = sum(positive_values) / len(positive_values) if positive_values else 0
-                mean_ = sum(fi)/len(fi)
-                if option_importance <= mean_*2/3:
-                    if option in e_search_space[fct] and len(e_search_space[fct]) > 1:
-                        e_search_space[fct].pop(option)
-                        print(f"The option {option} with importance {option_importance} is removed from the search space")
-                    else:
-                        print(f"The option {option} is no longer present in the search space")
-
+                # # mean_ = sum(positive_values) / len(positive_values) if positive_values else 0
+                # mean_ = sum(fi)/len(fi)
+                # if option_importance <= mean_*2/3:
+                #     if option in e_search_space[fct] and len(e_search_space[fct]) > 1:
+                #         e_search_space[fct].pop(option)
+                #         print(f"The option {option} with importance {option_importance} is removed from the search space")
+                #     else:
+                #         print(f"The option {option} is no longer present in the search space")
+    df_sum =pd.DataFrame(shap_summary)
+    df_sum.to_excel(f"{config['path']['result_folder']}/Shapley——values-summary.xlsx")
     add_config("time", "sp_reduce", round(time.time() - reduction_start_time, 4))
     get_final_sp_details(e_search_space)
     sample_list = random_sampling(e_search_space=e_search_space, n_sample=0, predictor=True)
@@ -293,6 +301,7 @@ def feat_coef_reduce_and_rank(e_search_space, predictor_graph_edge_index,
     return TopK_final
 
 def compute_shapley_value():
+    num_seed = int(config["param"]["num_seed"])
     nsamples = int(config["param"]["shapley_nsamples"])
     start_time = time.time()
     from sklearn.ensemble import RandomForestRegressor
@@ -306,11 +315,11 @@ def compute_shapley_value():
     except:
         df = pd.read_csv("data/shapley_dataset.csv")
     df = df[:nsamples].sample(frac=1).reset_index(drop=True)
-    X= df.drop(search_metric,axis=1)
-    Y = df[search_metric]
+    Xo= df.drop(search_metric,axis=1)
+    Yo = df[search_metric]
 
     # X_encoded = pd.get_dummies(X, drop_first=True)
-    # X_train, X_test, Y_train, Y_test = train_test_split(X_encoded,Y, test_size=0.2, random_state=num_seed)
+    X, X_val, Y, Y_val = train_test_split(Xo,Yo, test_size=0.2, random_state=num_seed)
     if shap_type == "kernel":
         stkr = StackingRegressor(
             estimators=[ ('rfr', RandomForestRegressor())],
@@ -319,16 +328,25 @@ def compute_shapley_value():
         )
         model = stkr.fit(X, Y)
 
-        # explainer = shap.KernelExplainer(model.predict, X,algorithm="sampling")
-        explainer = shap.TreeExplainer(model.predict, X)
+        explainer = shap.KernelExplainer(model.predict, X,algorithm="sampling")
+        # explainer = shap.TreeExplainer(model.predict, X)
         shap_value = explainer.shap_values(X)
         shap.summary_plot(shap_value, X, plot_type="bar")
     elif shap_type == "tree":
-        model = DecisionTreeRegressor(max_depth=2)
-        model.fit(X, Y)
-        explainer = shap.TreeExplainer(model.predict, X, algorithm="sampling")
-        shap_value = explainer.shap_values(X, nsamples=nsamples)
-        shap.summary_plot(shap_value, X, plot_type="bar")
+        stkr = StackingRegressor(
+            estimators=[('rfr', RandomForestRegressor())],
+            final_estimator=RandomForestRegressor(),
+            cv=3
+        )
+        model = stkr.fit(X, Y)
+        # model = xgboost.XGBRegressor(max_depth=1, learning_rate=0.005, subsample=0.5, n_estimators=10000,
+        #                                     base_score=Y.mean())
+        # model.fit(X, Y, eval_set=[(X_val, Y_val)], verbose=1000)
+
+        # explainer = shap.TreeExplainer(model.predict, X, algorithm="sampling")
+        explainer = shap.Explainer(model.predict,X)
+        shap_value = explainer.shap_values(X)
+        shap.summary_plot(shap_value, X, plot_type="bar",feature_names=list(Xo.columns),title="Shapley Values Summary",)
 
 
     print(f"Shapley values are as follows: | # samples:{len(shap_value)}")

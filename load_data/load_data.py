@@ -7,9 +7,9 @@ from torch import cat
 from torch_geometric.data import Data
 from load_data.graph_anomaly import *
 import torch_geometric.transforms as T
-from torch_geometric.loader import DataLoader, ClusterLoader,ClusterData,NeighborLoader
 from torch_geometric.datasets import TUDataset, PPI, Planetoid, Coauthor, Amazon, Flickr, FacebookPagePage
-
+from torch_geometric.transforms import RandomNodeSplit
+import torch
 from scipy.io import loadmat
 import pickle
 from sklearn.model_selection import train_test_split
@@ -112,7 +112,15 @@ def load_dataset(dataset):
 
     if type_task == "node_classification":
 
-        test_dataset = train_dataset = val_dataset = load_nc_data(dataset[0])
+        if config['dataset']['dataset_name'] in ["Cora", "Citeseer", "PubMed"]:
+            test_dataset = train_dataset = val_dataset = dataset[0]
+        elif config['dataset']['dataset_name'] in ["CS","Physics","Computers","Photo"]:
+
+            # split_size= dataset_split_size()
+            # transform = RandomNodeSplit(split="random", num_train_per_class=split_size[0], num_val=split_size[1], num_test=split_size[2])
+            transform = RandomNodeSplit(split="test_rest", num_train_per_class=20, num_val=500)
+            test_dataset  =train_dataset  =val_dataset = transform(dataset[0])
+
         in_channels = dataset[0].x.shape[1]
         num_class = dataset.num_classes
 
@@ -176,30 +184,6 @@ def shuffle_dataset(dataset):
         else:
             continue
     return train_dataset, train_dataset, train_dataset
-
-
-def load_nc_data(data):
-
-    data.train_mask = torch.zeros(data.num_nodes, dtype=torch.uint8)
-    data.train_mask[1000:] = 1
-    data.val_mask = torch.zeros(data.num_nodes, dtype=torch.uint8)
-    data.val_mask[: 500] = 1
-    data.test_mask = torch.zeros(data.num_nodes, dtype=torch.uint8)
-    data.test_mask[500:1000] = 1
-
-    # data = dataset[0]
-    # train_size = int(data.num_nodes * 0.8)
-    # val_size = int(data.num_nodes * 0.1)
-    # data.train_mask = torch.zeros(data.num_nodes, dtype=torch.uint8)
-    # data.train_mask[:-train_size] = 1
-    # data.val_mask = torch.zeros(data.num_nodes, dtype=torch.uint8)
-    # data.val_mask[-2 * val_size: -val_size] = 1
-    # data.test_mask = torch.zeros(data.num_nodes, dtype=torch.uint8)
-    # data.test_mask[-val_size:] = 1
-
-    return data
-
-
 
 
 def get_fraud_edge_index():
@@ -321,19 +305,19 @@ def Load_autogad_dataset(g):
     return dataset
 
 
-def Load_nc_data2(data):
-    set_seed()
+def dataset_split_size():
+    dataset_name = config['dataset']['dataset_name']
+    if dataset_name =='CS':
+        return (3000,450,14883)
+    elif dataset_name =="Photo":
+        return (3500,240,3747)
+    elif dataset_name == "Pubmed":
+        return (80,500,1000)
+    elif dataset_name == "Physics":
+        return (500,150,33843)
+    elif dataset_name == "Computers":
+        return (200,300,12881)
 
-    data = data[0]
-    skf = StratifiedKFold(10, shuffle=True, random_state=12345)
-    idx = [torch.from_numpy(i) for _, i in skf.split(data.y, data.y)]
-
-    split = [cat(idx[:6], 0), cat(idx[6:8], 0), cat(idx[8:], 0)]
-
-    data.train_mask = index_to_mask(split[0], data.num_nodes)
-    data.val_mask = index_to_mask(split[1], data.num_nodes)
-    data.test_mask = index_to_mask(split[2], data.num_nodes)
-    return data
 
 
 def index_to_mask(index, size):

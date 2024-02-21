@@ -184,9 +184,7 @@ def evaluate_model(y_true, y_pred,type_data="val"):
         print(f"{search_metric} is not a metric available for {config['dataset']['type_task']} task")
         exit()
     predictor_performances = {}
-   
-    # y_true = y_true.flatten().cpu()
-    # y_pred = y_pred.flatten().cpu()
+
 
     if type_data=="val":
         metric_obj = importlib.import_module(f"search_algo.utils")
@@ -199,29 +197,6 @@ def evaluate_model(y_true, y_pred,type_data="val"):
             predictor_performances[metric] = metric_function(np.squeeze(y_true), np.squeeze(y_pred))
 
 
-    # col = "blue"
-    #
-    # plt.figure(figsize=(8, 8))
-    #
-    # xmin = min(min(y_pred), min(y_true))
-    # xmax = max(max(y_pred), max(y_true))
-    #
-    # if xmin < 0:
-    #     xmin = 0
-    # if xmax > 100:
-    #     xmax = 100
-    #
-    # lst = [a for a in range(int(xmin), int(xmax) + 1)]
-    # plt.plot(lst, lst, color='black', linewidth=0.6)
-    # plt.scatter(y_true, y_pred, color=col, linewidth=0.8)
-    #
-    # plt.xlabel(f'True {search_metric}', fontsize=28)
-    # plt.ylabel(f'Predicted {search_metric}', fontsize=28)
-    # # plt.legend()
-    # plt.grid()
-    # plt.show()
-    # plt.savefig(f'{config["path"]["plots_folder"]}/{random.choice(range(500000))}_{dataset_name}.pdf',
-    #             bbox_inches="tight", dpi=1000)
 
     return predictor_performances
 
@@ -231,75 +206,11 @@ def save_search_space_evolution(search_space, rnd):
         record.write(f"\n\n Search space after {rnd} rounds of search space reduction {'*'*5} \n")
         for k,v in search_space.items():
             record.write(f"{k} : {v} \n")
-def Generate_time_cost():
-    dataset_construction = float(config["time"]["distribution_time"])
-    predictor_training = float(config["time"]["predictor_training_time"])
-    gnn_encoding = float(config["time"]["sampling_time"])
-    topk_gnn_prediction = float(config["time"]["pred_time"])
-    topk_training = float(config["time"]["best_acc_time"])
-    total = float(config["time"]["total_search_time"])
-
-    # Make a random dataset:
-    height = [dataset_construction, predictor_training, gnn_encoding + topk_gnn_prediction, topk_training]
-    bars = (
-    'Predictor training dataset construction', 'predictor training', 'top-k gnn prediction', 'top k gnn training')
-    y_pos = np.arange(len(bars))
-    fig, ax = plt.subplots()
-    # Create bars
-    plt.barh(y_pos, height)
-    plt.title("Running time details on {dataset_name} dataset")
-    plt.ylabel("running time(seconds)")
-    # Create names on the x-axis
-    plt.xticks(y_pos, bars)
-    plt.grid()
-    plt.show()
-    fig.savefig(f'{config["path"]["plots_folder"]}/{dataset_name}_timeCost_details_bar.pdf', bbox_inches="tight")
-
-    # explosion
-    fig, ax = plt.subplots(figsize=(25, 10), subplot_kw=dict(aspect="equal"))
-
-    # Pie Chart
-    plt.pie(height, labels=bars,
-            autopct='%1.1f%%', pctdistance=0.85)
-
-    # draw circle
-    centre_circle = plt.Circle((0, 0), 0.60, fc='white')
-    fig = plt.gcf()
-
-    # Adding Circle in Pie chart
-    fig.gca().add_artist(centre_circle)
-
-    # Adding Title of chart
-    plt.title("Running time details on {dataset_name} dataset")
-
-    # Displaing Chart
-    plt.show()
-    fig.savefig(f'{config["path"]["plots_folder"]}/{dataset_name}_timeCost_details_pie.pdf', bbox_inches="tight")
-
-    bars = ('GraphNAS', 'RS', 'GAS', 'Auto-GNAS', "GraphNAP")
-    if config["dataset"]["dataset_name"] == "Cora":
-        height = [12960, 12240, 11520, 3240, total]
-    elif config["dataset"]["dataset_name"] == "Citeseer":
-        height = [13320, 13248, 13680, 4140, total]
-    elif config["dataset"]["dataset_name"] == "Pubmed":
-        height = [18360, 18360, 16560, 5760, total]
-
-    y_pos = np.arange(len(bars))
-    fig, ax = plt.subplots()
-    # Create bars
-    plt.bar(y_pos, height)
-    plt.title("Running time Comparison on {dataset_name} dataset")
-    plt.ylabel("running time(seconds)")
-    # Create names on the x-axis
-    plt.xticks(y_pos, bars)
-    plt.grid()
-    plt.show()
-    fig.savefig(f'{config["path"]["plots_folder"]}/{dataset_name}_timeCost_comparison.pdf', bbox_inches="tight")
 
 
 def create_paths():
     # Create here path for recording model performance distribution
-    result_folder = osp.join(project_root_dir, f'results/{config["dataset"]["type_task"]}/{config["dataset"]["dataset_name"]}/{RunCode}')
+    result_folder = osp.join(project_root_dir, f'results/{config["dataset"]["type_task"]}/{config["dataset"]["dataset_name"]}/{RunCode}(#GPU={config["param"]["nb_gpu"]})')
     os.makedirs(result_folder, exist_ok=True)
     add_config("path", "result_folder", result_folder)
 

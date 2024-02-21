@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 
-import sys
+
 import statistics as stat
 from copy import deepcopy
-
+from accelerate import Accelerator
 from torch.nn.parallel import DistributedDataParallel
-
+from accelerate import DistributedDataParallelKwargs
 from predictor_models.utils import *
 from torch_geometric.data import Data
 from search_space_manager.sample_models import *
@@ -28,12 +28,12 @@ def get_performance_distributions(e_search_space,
     n_sample = int(config["param"]["N"])
     search_metric = config["param"]["search_metric"]
     list_of_choice=get_list_of_choice(e_search_space)
-    print(f"The search space size is {len(list_of_choice)} | {list_of_choice}")
     timestart = time.time()
-    print(f' \n  {"#" * 10} Getting {search_metric}  of  {n_sample} models {"#" * 10} \n')
+    sys.stdout.write(f' \n  {"#" * 10} Getting {search_metric}  of  {n_sample} models {"#" * 10} \n')
     best_performance =get_initial_best_performance()
 
     model_list = sample_models(n_sample, e_search_space)
+
     edge_index = get_edge_index(model_list[0], predictor_graph_edge_index)
     predictor_dataset = defaultdict(list)
     shapley_dataset = defaultdict(list)
@@ -45,8 +45,9 @@ def get_performance_distributions(e_search_space,
 
     pbar = tqdm(total=len(model_list))
     pbar.set_description("training samples")
-    for no, submodel in enumerate(model_list):
-        # txt_model = f"Model_Config: {[submodel[opt][0] for opt in submodel.keys()]} "
+    for no, submodel in tqdm(enumerate(model_list)):
+
+        txt_model = f"Model_Config: {[submodel[opt][0] for opt in submodel.keys()]} "
         submodel_config = {}
         # extract the model config choices
         for key, value in submodel.items():
@@ -76,7 +77,7 @@ def get_performance_distributions(e_search_space,
                 best_sample[search_metric] = best_performance
 
         else:
-            print(
+            sys.stdout.write(
                 f"{'++' * 10} {metric_rule} is an invalid rule. Metric rule should be 'min' or 'max'{'++' * 10}")
             sys.exit()
 
@@ -107,13 +108,13 @@ def get_performance_distributions(e_search_space,
                     predictor_dataset[function].append(option[2])
             predictor_dataset[search_metric].append(model_performance)
         else:
-            print(
+            accelerator.print(
                 f"{'++' * 10} Incorrect predictor_dataset_type)")
             sys.exit()
-
-        # pbar.write(f"{txt_model} | {search_metric}:{round(model_performance,5)}")
-        pbar.set_description(f"Training samples.|Best {search_metric}={round(best_performance,5)}")
-        pbar.update(1)
+        if accelerator.is_main_process:
+            pbar.write(f"{txt_model} | {search_metric}:{round(model_performance,5)}")
+            pbar.set_description(f"Training samples.|Best {search_metric}={round(best_performance,5)}")
+            pbar.update(1)
     distribution_time = round(time.time() - timestart, 2)
     add_config("time", "distribution_time", distribution_time)
     add_config("results", f"{search_metric}_of_best_sampled_model", best_performance)
@@ -142,7 +143,6 @@ def get_best_model(topk_list, option_decoder, dataset):
     start_time = time.time()
     max_performace =get_initial_best_performance()
 
-    print(f"\n {'=**=' * 15}  Training top-k models  {'=**=' * 15}")
     try:  # Recuperer le meilleur model present dans le dataset concu en phase 1
         for filename in glob.glob(config["path"]["predictor_dataset_folder"] + '/*'):
             data = torch.load(filename)
@@ -167,9 +167,11 @@ def get_best_model(topk_list, option_decoder, dataset):
     true_performance = []
     metrics_list = map_predictor_metrics()
 
-    pbar = tqdm(total=len(topk_list))
-    pbar.set_description("training best models")
+    train_dataset, val_dataset, test_dataset, in_channels, num_class = load_dataset(dataset)
+    train_dataset = prepare_data_loader(train_dataset, batch_size=Batch_Size, shuffle=True)
+    val_dataset = prepare_data_loader(val_dataset, batch_size=Batch_Size, shuffle=False)
     for idx, row in topk_list.iterrows():
+
         num_model += 1
         dict_model = {}  #
         txt_model = f"Model_Config: {row['model_config']} "
@@ -185,11 +187,7 @@ def get_best_model(topk_list, option_decoder, dataset):
                     elif config["param"]["encoding_method"] == "embedding":
                         dict_model[function] = option_decoder[row[function]]
 
-        train_dataset, val_dataset, test_dataset, in_channels, num_class = load_dataset(dataset)
-        train_dataset = prepare_data_loader(train_dataset, batch_size=Batch_Size, shuffle=True)
-        val_dataset = prepare_data_loader(val_dataset, batch_size=Batch_Size, shuffle=False)
 
-        sys.stdout.write(f"Architecture {num_model}/{len(topk_list)}:{[dict_model[opt] for opt in dict_model.keys()]} ")
         model_performance = run_model(submodel_config=dict_model,
                                       train_data=train_dataset,
                                       test_data=val_dataset,
@@ -201,23 +199,22 @@ def get_best_model(topk_list, option_decoder, dataset):
                                       type_data="val")
         predicted_performance.append(row[search_metric])
         true_performance.append(model_performance)
+        sys.stdout.write(f"Architecture {num_model}/{len(topk_list)}:{[dict_model[opt] for opt in dict_model.keys()]} : {search_metric}={model_performance}")
 
         if metric_rule == "max":
             if model_performance > max_performace:
                 max_performace = model_performance
                 bestmodel = copy.deepcopy(dict_model)
+
         elif metric_rule == "min":
             if model_performance < max_performace:
                 max_performace = model_performance
                 bestmodel = copy.deepcopy(dict_model)
 
         else:
-            print(
+            sys.stdout.write(
                 f"{'++' * 10} {metric_rule} is an invalid rule. Metric rule should be 'min' or 'max'{'++' * 10}")
             sys.exit()
-        pbar.write(f"{txt_model} | {search_metric}:{round(model_performance, 5)}")
-        pbar.set_description(f"Training best Models.|Best {search_metric}={round(max_performace, 5)}")
-        pbar.update(1)
 
     predictor_performance = evaluate_model_predictor(true_performance, predicted_performance, metrics_list,
                                                      title="Predictor test")
@@ -280,6 +277,7 @@ def run_model(submodel_config, train_data, test_data, in_chanels,
     params_config["in_channels"] = in_chanels
     params_config["num_class"] = num_class
     set_seed()
+    # accelerator.free_memory()
     new_model = GNN_Model(params_config)
 
     optimizer = params_config["optimizer"](new_model.parameters(),
@@ -291,6 +289,7 @@ def run_model(submodel_config, train_data, test_data, in_chanels,
     performance_record = []
     test_performance_record = defaultdict(list)
     for i in range(numround):
+
         trainer = ddp_module(accelerator=accelerator,
                    total_epochs=epochs,
                    model_to_train=new_model,

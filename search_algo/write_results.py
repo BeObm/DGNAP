@@ -15,7 +15,7 @@ def write_results(best_model, test_performances_record):
     with open(
             f'results/result_details/{config["dataset"]["type_task"]}/{config["dataset"]["dataset_name"]}_n{int(config["param"]["budget"])}_K{k}.txt',
             'a+') as results:
-        results.write(f'\n #############    Result report    (Time: {RunCode})  seed:{num_seed} #############\n')
+        results.write(f'\n #############    Result report    (Time: {RunCode})  #############\n')
         results.write(f'Dataset: {(config["dataset"]["dataset_name"])} \n')
         results.write(f'Type task: {config["dataset"]["type_task"]} \n')
         results.write(f'{config["param"]["search_metric"]} of the best sampled model: {config["results"][f"""{config["param"]["search_metric"]}_of_best_sampled_model"""]} \n')
@@ -50,7 +50,7 @@ def write_results(best_model, test_performances_record):
         results.write(f'Number of GPUs: {float(config["param"]["nb_gpu"])}\n')
         results.write(f'{"--" * 20} END {"--" * 20}\n\n ')
 
-    print(f'\n #############    Result report    (Time: {RunCode})  seed:{num_seed} #############\n')
+    print(f'\n #############    Result report    (Time: {RunCode})  #############\n')
     print(f'Dataset: {(config["dataset"]["dataset_name"])} \n')
     print(f'Type task: {config["dataset"]["type_task"]} \n')
     print(

@@ -121,10 +121,11 @@ def Top_k_Acc(Y_true, Y_predicted):
 
 def map_predictor_metrics():
     if config["predictor"]["Predictor_model"] == "GNN_performance":
-        return ["ndcg_scores","spearman_corr", "kendall_corr", "R2_score", "pearson_corr"]
+        # return ["ndcg_scores","spearman_corr", "kendall_corr", "R2_score", "pearson_corr"]
+        return ["spearman_corr", "kendall_corr", "R2_score", "pearson_corr"]
 
     if config["predictor"]["Predictor_model"] == "GNN_ranking":
-        return ["ndcg_scores", "spearman_corr", "kendall_corr", "Top_k_Acc",  "R2_score"]
+        return ["spearman_corr", "kendall_corr", "Top_k_Acc",  "R2_score"]
 
 
 def map_function_error(function):
@@ -182,3 +183,4 @@ def prepare_predictor_data_loader(data, batch_size=32,shuffle=False):
 
     dataloader = DataLoader(data, batch_size=batch_size,drop_last=False, shuffle=shuffle)
     return dataloader
+

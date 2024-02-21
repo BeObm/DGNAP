@@ -15,11 +15,11 @@ from settings.config_file import Batch_Size
 from torch.utils.data import Dataset
 from settings.config_file import *
 import torch.multiprocessing as mp
-from accelerate import Accelerator
-from accelerate import DistributedDataParallelKwargs
 
 
-def prepare_data_loader(data, batch_size=32,shuffle=False):
+
+
+def prepare_data_loader(data, batch_size=Batch_Size,shuffle=False):
 
     if config["dataset"]["type_task"] =="node_classification":
         cluster_data = ClusterData(data, num_parts=128)

@@ -1,27 +1,28 @@
 # -*- coding: utf-8 -*-
 import sys
-
+from datetime import datetime
 import torch
 import random
 import numpy as np
 from configparser import ConfigParser
 import os.path as osp
 import os
-from datetime import datetime
-
-
+# from accelerate import Accelerator
+# from accelerate import DistributedDataParallelKwargs
 num_workers = 8
-num_seed = 42
-config = ConfigParser()
-Batch_Size = 64 * 3
-ncluster=128
 
+config = ConfigParser()
+Batch_Size = 64
+ncluster=1000
+# ddp_kwargs = DistributedDataParallelKwargs(find_unused_parameters=True)
+# accelerator = Accelerator(kwargs_handlers=[ddp_kwargs])
 
 RunCode = dates = datetime.now().strftime("%d-%m_%Hh%M")
 
 
-def set_seed(num_seed=num_seed):
+def set_seed():
     # os.CUBLAS_WORKSPACE_CONFIG="4096:8"
+    num_seed=int(config["param"]["num_seed"])
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
     torch.manual_seed(num_seed)
@@ -55,20 +56,21 @@ def create_config_file(type_task, dataset_name):
         "project_dir": project_root_dir,
         'config_filename': config_filename,
         "run_code": RunCode,
-        "budget": 1500,
+        "num_seed":42,
+        "budget": 800,
         "k": 150,
         "z_sample": 1,  # Number of time  sampled models are trained before we report their performance
         "z_topk": 1,
-        "z_final": 2,
+        "z_final": 10,
         "train_ratio": 0.8,
         "nfcode": 56,  # number of digit for each function code when using embedding method
         "noptioncode": 8,
-        "sample_model_epochs": 400,
-        "topk_model_epochs": 400,
+        "sample_model_epochs": 100,
+        "topk_model_epochs": 100,
         "best_model_epochs": 400,
         "patience": 100,
         "encoding_method": "one_hot",  # ={one_hot, embedding,index_embedding}
-        "type_sampling": "controlled_stratified_sampling",
+        "type_sampling": "uniform_sampling",
         # random_sampling, uniform_sampling, controlled_stratified_sampling
         "feature_size_choice": "total_choices",
         # total_functions total_choices  # for one hot encoding using graph dataset for predictor, use"total choices
@@ -84,12 +86,12 @@ def create_config_file(type_task, dataset_name):
         "predictor_metric": "spearman_corr",
         # , ["R2_score", "pearson_corr", "kendall_corr", "spearman_corr"], ["spearman_corr","map_score", "ndcg_score", "kendall_corr", "Top_k_Acc"]
         "pred_Batch_Size": 96,
-        "dim": 512,
-        "drop_out": 0.2,
-        "lr": 0.005,
+        "dim": 1024,
+        "drop_out": 0.3,
+        "lr": 0.0001,
         "wd": 0.0001,
         "momentum": 0.8,
-        "num_epoch": 50,
+        "num_epoch": 500,
         "optimizer": "adamW",
         "patience": 50,
         "best_loss":0
@@ -116,7 +118,7 @@ def add_config(section_, key_, value_, ):
 def get_initial_best_performance():
     metric_rule = config["param"]["best_search_metric_rule"]
     if metric_rule == 'max':
-        return 0
+        return -99999999
     elif metric_rule == 'min':
         return 99999999
     else:

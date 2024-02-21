@@ -11,7 +11,7 @@ from torch.nn import Linear, ReLU, Sequential
 from search_algo.utils import *
 # from sklearn.metrics import accuracy_score#, precision_score, recall_score
 from settings.config_file import *
-set_seed()
+
 
 
 class GNN_Model(MessagePassing):
@@ -23,8 +23,8 @@ class GNN_Model(MessagePassing):
         self.aggr2 = param_dict['aggregation2']
         self.hidden_channels = int(param_dict['hidden_channels'])
         self.type_task = config["dataset"]["type_task"]
-        self.head1 = 3
-        self.head2 =3
+        self.head1 = 8
+        self.head2 =8
         self.gnnConv1 = param_dict['gnnConv1'][0]
         self.gnnConv2 = param_dict['gnnConv2'][0]
         self.global_pooling = param_dict['pooling']
@@ -82,12 +82,10 @@ class GNN_Model(MessagePassing):
                 self.output_conv2 = self.hidden_channels
 
         if self.normalize1 != False:
-            self.batchnorm1 = self.normalize1(self.input_conv2)
+            self.normalizer_function1 = self.normalize1(self.input_conv2)
 
         if self.normalize2 != False:
-            self.batchnorm2 = self.normalize2(self.output_conv2)
-
-        # self.graphnorm = GraphNorm(self.output_conv2)
+            self.normalizer_function2 = self.normalize2(self.output_conv2)
 
         self.mlp = Sequential(Linear(self.output_conv2, self.hidden_channels*16), ReLU(),
                               Linear(self.hidden_channels*16, self.hidden_channels), ReLU(),
@@ -122,14 +120,14 @@ class GNN_Model(MessagePassing):
         x = self.get_forward_conv(1, self.gnnConv1, x, edge_index, edge_attr)
 
         if self.normalize1 not in [False, "False"]:
-            x = self.batchnorm1(x)
+            x = self.normalizer_function1(x)
         x = self.activation1(x)
 
         #x = F.dropout(x, self.dropout, training=self.training)
         x = self.get_forward_conv(2, self.gnnConv2, x, edge_index, edge_attr)
 
         if self.normalize2 not in [False, "False"]:
-            x = self.batchnorm2(x)
+            x = self.normalizer_function2(x)
         x = self.activation2(x)
 
 
@@ -141,7 +139,7 @@ class GNN_Model(MessagePassing):
         #  Apply a final classifier
         x = self.mlp(x)
 
-        x = F.log_softmax(x, dim=-1)
+        x = F.log_softmax(x, dim=1)
         return x
 
 
