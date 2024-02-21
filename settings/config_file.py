@@ -57,17 +57,17 @@ def create_config_file(type_task, dataset_name):
         'config_filename': config_filename,
         "run_code": RunCode,
         "num_seed":42,
-        "budget": 800,
-        "k": 150,
+        "budget": 80,
+        "k": 15,
         "z_sample": 1,  # Number of time  sampled models are trained before we report their performance
         "z_topk": 1,
         "z_final": 10,
         "train_ratio": 0.8,
         "nfcode": 56,  # number of digit for each function code when using embedding method
         "noptioncode": 8,
-        "sample_model_epochs": 100,
+        "sample_model_epochs": 2,
         "topk_model_epochs": 100,
-        "best_model_epochs": 400,
+        "best_model_epochs": 2,
         "patience": 100,
         "encoding_method": "one_hot",  # ={one_hot, embedding,index_embedding}
         "type_sampling": "uniform_sampling",
