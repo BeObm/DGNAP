@@ -7,15 +7,15 @@ import numpy as np
 from configparser import ConfigParser
 import os.path as osp
 import os
-# from accelerate import Accelerator
-# from accelerate import DistributedDataParallelKwargs
+from accelerate import Accelerator
+from accelerate import DistributedDataParallelKwargs
 num_workers = 8
 
 config = ConfigParser()
 Batch_Size = 64
 ncluster=1000
-# ddp_kwargs = DistributedDataParallelKwargs(find_unused_parameters=True)
-# accelerator = Accelerator(kwargs_handlers=[ddp_kwargs])
+ddp_kwargs = DistributedDataParallelKwargs(find_unused_parameters=True)
+accelerator = Accelerator(kwargs_handlers=[ddp_kwargs])
 
 RunCode = dates = datetime.now().strftime("%d-%m_%Hh%M")
 

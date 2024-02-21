@@ -15,6 +15,7 @@ from settings.config_file import *
 import importlib
 from search_algo.DDP import *
 from tqdm.auto import tqdm
+from accelerate import Accelerator
 import torch.multiprocessing as mp
 
 def get_performance_distributions(e_search_space,
