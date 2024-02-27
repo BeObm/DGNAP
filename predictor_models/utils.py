@@ -125,7 +125,7 @@ def map_predictor_metrics():
         return ["spearman_corr", "kendall_corr", "R2_score", "pearson_corr"]
 
     if config["predictor"]["Predictor_model"] == "GNN_ranking":
-        return ["spearman_corr", "kendall_corr", "Top_k_Acc",  "R2_score"]
+        return ["pearson_corr", "spearman_corr", "kendall_corr", "Top_k_Acc",  "R2_score"]
 
 
 def map_function_error(function):

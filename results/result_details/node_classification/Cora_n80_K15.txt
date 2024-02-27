@@ -1,0 +1,33 @@
+
+ #############    Result report    (Time: 22-02_04h50)  #############
+Dataset: Cora 
+Type task: node_classification 
+Accuracy_score of the best sampled model: 0.724 
+Search space reduction strategy: shapley_values 
+ Initial Search space: #function=14 | # Option: 62| #Architectures:318504960  
+ Final Search space: #function=14 | # Option: 33| #Architectures:41472 
+Type of predictor loss: one_hot
+Node feature size: GNN_ranking
+Predictor dataset type: graph
+search metric: Accuracy_score
+Predictor metric: spearman_corr
+Predictor type of criterion: MarginRankingLoss
+Type of sampling : uniform_sampling
+Total budget: 80
+Number of samples: 55
+Number of TopK models: 15
+Best sampled model: {'gnnConv1': 'GraphConv', 'gnnConv2': 'SGConv', 'aggregation1': 'mean', 'aggregation2': 'mean', 'normalize1': False, 'normalize2': 'GraphNorm', 'activation1': 'tanh', 'activation2': 'relu6', 'hidden_channels': 256, 'dropout': 0.6, 'lr': 0.1, 'weight_decay': 0, 'optimizer': 'adamW', 'criterion': 'CrossEntropyLoss'}
+Best Sampled model Accuracy_score: 0.724
+f"Best_model_Accuracy_score": 0.736
+predictor spearman_corr: |Train= 0.8354 |Val=0.4545 |Test=0.3181 
+predictor kendall_corr: |Train= 0.6695 |Val=0.3455 |Test=0.2297 
+predictor Top_k_Acc: |Train= 0.414 |Val=0.3055 |Test=0.5391 
+predictor R2_score: |Train= 0.6714 |Val=-0.4526 |Test=-0.0795 
+dataset_time_cost: 25.97
+search_space_reduction_time_cost: 11.3117
+Search time cost: 662.88
+total search time cost: 688.85
+Number of GPUs: 4.0
+---------------------------------------- END ----------------------------------------
+
+ 

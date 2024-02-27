@@ -12,8 +12,8 @@ from accelerate import DistributedDataParallelKwargs
 num_workers = 8
 
 config = ConfigParser()
-Batch_Size = 64
-ncluster=1000
+Batch_Size = 32*4
+ncluster=500
 ddp_kwargs = DistributedDataParallelKwargs(find_unused_parameters=True)
 accelerator = Accelerator(kwargs_handlers=[ddp_kwargs])
 
@@ -57,25 +57,25 @@ def create_config_file(type_task, dataset_name):
         'config_filename': config_filename,
         "run_code": RunCode,
         "num_seed":42,
-        "budget": 80,
-        "k": 15,
+        "budget": 800,
+        "k": 150,
         "z_sample": 1,  # Number of time  sampled models are trained before we report their performance
         "z_topk": 1,
         "z_final": 10,
         "train_ratio": 0.8,
         "nfcode": 56,  # number of digit for each function code when using embedding method
         "noptioncode": 8,
-        "sample_model_epochs": 2,
+        "sample_model_epochs": 100,
         "topk_model_epochs": 100,
-        "best_model_epochs": 2,
+        "best_model_epochs": 400,
         "patience": 100,
         "encoding_method": "one_hot",  # ={one_hot, embedding,index_embedding}
-        "type_sampling": "uniform_sampling",
+        "type_sampling": "controlled_stratified_sampling",
         # random_sampling, uniform_sampling, controlled_stratified_sampling
         "feature_size_choice": "total_choices",
         # total_functions total_choices  # for one hot encoding using graph dataset for predictor, use"total choices
         'type_input_graph': "directed",
-        "predict_sample": 500000,
+        "predict_sample": 500,
         "shapley_shap_type":"tree",  # kernel
         "shapley_nsamples":600,
         "batch_sample": 100000
@@ -85,7 +85,7 @@ def create_config_file(type_task, dataset_name):
         "predictor_dataset_type": "graph",
         "predictor_metric": "spearman_corr",
         # , ["R2_score", "pearson_corr", "kendall_corr", "spearman_corr"], ["spearman_corr","map_score", "ndcg_score", "kendall_corr", "Top_k_Acc"]
-        "pred_Batch_Size": 96,
+        "pred_Batch_Size": 128,
         "dim": 1024,
         "drop_out": 0.3,
         "lr": 0.0001,

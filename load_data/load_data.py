@@ -7,7 +7,7 @@ from torch import cat
 from torch_geometric.data import Data
 from load_data.graph_anomaly import *
 import torch_geometric.transforms as T
-from torch_geometric.datasets import TUDataset, PPI, Planetoid, Coauthor, Amazon, Flickr, FacebookPagePage
+from torch_geometric.datasets import TUDataset, PPI, Planetoid, Coauthor, Amazon, Flickr, FacebookPagePage, WebKB
 from torch_geometric.transforms import RandomNodeSplit
 import torch
 from scipy.io import loadmat
@@ -57,7 +57,7 @@ class ShuffleDataset(torch.utils.data.IterableDataset):
 
 def get_dataset(type_task, dataset_root, dataset_name, normalize_features=True, transform=False):
     set_seed()
-    support_dataset_list = {"node_classification": ["Cora", "Citeseer", "Pubmed","CS","Physics","Computers","Photo"],
+    support_dataset_list = {"node_classification": ["Cora", "Citeseer", "Pubmed","CS","Physics","Computers","Photo","Cornell", "Texas","Wisconsin"],
                             "graph_classification": ["DD", "PROTEINS", "ENZYMES", "BZR", "COLLAB", "IMDB-BINARY"],
                             "graph_anomaly": ["yelp", "elliptic", "Amazon", "YelpChi"]
                             }
@@ -71,7 +71,8 @@ def get_dataset(type_task, dataset_root, dataset_name, normalize_features=True, 
                 Downloder=Coauthor
             elif dataset_name in ["Computers","Photo"]:
                 Downloder=Amazon
-
+            elif dataset_name in ["Cornell", "Texas","Wisconsin"]:
+                Downloder=WebKB
             if transform ==True and normalize_features==True:
                 dataset = Downloder(root=dataset_root, name=dataset_name,
                                     transform=T.Compose([T.NormalizeFeatures(), T.GCNNorm(), T.RandomNodeSplit()]))
@@ -112,15 +113,16 @@ def load_dataset(dataset):
 
     if type_task == "node_classification":
 
-        if config['dataset']['dataset_name'] in ["Cora", "Citeseer", "PubMed"]:
+        if config['dataset']['dataset_name'] in ["Cora", "Citeseer", "Pubmed"]:
             test_dataset = train_dataset = val_dataset = dataset[0]
         elif config['dataset']['dataset_name'] in ["CS","Physics","Computers","Photo"]:
-
             # split_size= dataset_split_size()
             # transform = RandomNodeSplit(split="random", num_train_per_class=split_size[0], num_val=split_size[1], num_test=split_size[2])
             transform = RandomNodeSplit(split="test_rest", num_train_per_class=20, num_val=500)
-            test_dataset  =train_dataset  =val_dataset = transform(dataset[0])
-
+            test_dataset = train_dataset =val_dataset = transform(dataset[0])
+        elif config['dataset']['dataset_name'] in ["Cornell", "Texas","Wisconsin"]:
+            transform = RandomNodeSplit(split="train_rest", num_val=0.2, num_test= 0.2)
+            test_dataset = train_dataset = val_dataset = transform(dataset[0])
         in_channels = dataset[0].x.shape[1]
         num_class = dataset.num_classes
 

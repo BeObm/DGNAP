@@ -210,7 +210,7 @@ def save_search_space_evolution(search_space, rnd):
 
 def create_paths():
     # Create here path for recording model performance distribution
-    result_folder = osp.join(project_root_dir, f'results/{config["dataset"]["type_task"]}/{config["dataset"]["dataset_name"]}/{RunCode}(#GPU={config["param"]["nb_gpu"]})')
+    result_folder = osp.join(project_root_dir, f'results/{config["dataset"]["type_task"]}/{config["dataset"]["dataset_name"]}/{RunCode}')
     os.makedirs(result_folder, exist_ok=True)
     add_config("path", "result_folder", result_folder)
 
@@ -226,7 +226,7 @@ def create_paths():
     add_config("path", "plots_folder", plots_folder)
 
     # create here path for saving predictor results
-    predictor_results_folder = osp.join(result_folder, "predictor_training_data")
+    predictor_results_folder = osp.join(result_folder, f"predictor_training_data(#GPU={config['param']['nb_gpu']})")
     os.makedirs(predictor_results_folder, exist_ok=True)
     add_config("path", "predictor_dataset_folder", predictor_results_folder)
 

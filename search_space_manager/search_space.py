@@ -166,7 +166,7 @@ def create_spatial_gnap_nl_space():  # a<b
     agregation = ['add', "max", "mean"]
     activation = ["Relu", "Elu", "linear", "Softplus", "sigmoid", "tanh", "relu6","leaky_relu"]
     hidden_channels = [16, 32, 64, 128,256]
-    normalizer = [False, "GraphNorm", "InstanceNorm", "BatchNorm"]
+    normalizer = [False, "InstanceNorm", "BatchNorm","GraphNorm"]
     dropout = [0.0, 0.2, 0.4, 0.6]
     sp = {'gnnConv1': attention, 'gnnConv2': attention, 'aggregation1': agregation, 'aggregation2': agregation,
           'normalize1': normalizer, 'normalize2': normalizer, 'activation1': activation, 'activation2': activation,

@@ -22,7 +22,7 @@ import torch.multiprocessing as mp
 def prepare_data_loader(data, batch_size=Batch_Size,shuffle=False):
 
     if config["dataset"]["type_task"] =="node_classification":
-        cluster_data = ClusterData(data, num_parts=128)
+        cluster_data = ClusterData(data, num_parts=ncluster)
         dataloader = ClusterLoader(cluster_data, batch_size=batch_size, shuffle=True)
         # loader = NeighborLoader(
         #     data,
