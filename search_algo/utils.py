@@ -218,6 +218,7 @@ def create_paths():
     result_detail_folder = osp.join(project_root_dir, f'results/result_details/{config["dataset"]["type_task"]}')
     os.makedirs(result_detail_folder, exist_ok=True)
     add_config("path", "result_detail_folder", result_detail_folder)
+    add_config("path", "graph_config_file", f"{result_detail_folder}/gnn_config_file.txt")
 
 
     # Create here path for saving plots
@@ -246,3 +247,21 @@ def get_list_of_choice(sp):
         for choice,value in choices.items():
             liste.append(choice)
     return liste
+
+
+import json
+
+def save_gnn_config_file(filename,data):
+
+    with open(filename, 'w') as f:
+        json.dump(data, f)
+
+def retrieve_gnn_config(filename, index):
+
+    with open(filename, 'r') as f:
+        data = json.load(f)
+        if 0 <= index < len(data):
+            return data[index]
+        else:
+            raise IndexError("Index out of range")
+

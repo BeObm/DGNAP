@@ -2,7 +2,7 @@
 import torch
 
 from settings.config_file import *
-
+import ast
 from predictor_models.utils import *
 from search_algo.utils import *
 from torch_geometric.data import Data
@@ -34,14 +34,18 @@ def get_prediction_from_table(performance_records_path, e_search_space):
 
 def get_prediction(performance_records_path, e_search_space, predictor_graph_edge_index, option_decoder):
     if (config["predictor"]["predictor_dataset_type"]) == "graph":
-        feature_size = train_predictor_using_graph_dataset(performance_records_path)
+        feature_size,best_predictor_model,accelerator = train_predictor_using_graph_dataset(performance_records_path)
         if config['param']['search_space_reduction_strategy'] == "none":
             TopK_final = predict_and_rank(e_search_space, predictor_graph_edge_index, feature_size)
         elif config['param']['search_space_reduction_strategy'] == 'probs':
             TopK_final = prob_reduce_and_rank(e_search_space, predictor_graph_edge_index, feature_size, option_decoder)
         elif config['param']['search_space_reduction_strategy'] in ["gradients", "shapley_values"]:
-            TopK_final = feat_coef_reduce_and_rank(e_search_space, predictor_graph_edge_index, feature_size,
-                                                   performance_records_path)
+            TopK_final = feat_coef_reduce_and_rank(e_search_space=e_search_space,
+                                                   predictor_graph_edge_index=predictor_graph_edge_index,
+                                                   predictor_dataset_folder=performance_records_path,
+                                                   feature_size=feature_size,
+                                                   best_predictor_model=best_predictor_model,
+                                                   accelerator=accelerator)
         else:
             raise ValueError("Incorrect value for search space reduction strategy")
     elif (config["predictor"]["predictor_dataset_type"]) == "table":
@@ -119,7 +123,7 @@ def train_predictor_using_graph_dataset(predictor_dataset_folder):
         add_config("predictor", f"{metric}_val", value)
         print(f"{metric}_val: {value}")
 
-    return feature_size
+    return feature_size,best_predictor_model,accelerator
 
 
 def predict_and_rank(e_search_space, predictor_graph_edge_index, feature_size):
@@ -183,7 +187,7 @@ def predict_and_rank(e_search_space, predictor_graph_edge_index, feature_size):
     return TopK_final
 
 def feat_coef_reduce_and_rank(e_search_space, predictor_graph_edge_index,
-                              feature_size, predictor_dataset_folder):
+                              feature_size, predictor_dataset_folder,best_predictor_model,accelerator):
     set_seed()
     feature_importance_source = config['param']["search_space_reduction_strategy"]
     dim = int(config["predictor"]["dim"])
@@ -192,29 +196,30 @@ def feat_coef_reduce_and_rank(e_search_space, predictor_graph_edge_index,
     search_metric = config["param"]["search_metric"]
     metric_rule = config["param"]["best_search_metric_rule"]
     # Load predictor model and weights
-    try:
-        model, train_predictor, test_predictor = get_PredictorModel(config["predictor"]["Predictor_model"])
-        predictor_model = model(
-            in_channels=feature_size,
-            dim=dim,
-            drop_out=drop_out,
-            out_channels=1)
-        model_weigth_path = f"{config['path']['result_folder']}/predictor_model_weight.pt"
-        predictor_model.load_state_dict(torch.load(model_weigth_path))
-        predictor_model=predictor_model.to(device)
-        predictor_model.eval()
-    except:
-        raise ValueError("Wrong pre-trained predictor path")
-    base_space = deepcopy(e_search_space)
-    total_importance = []
-    train_loader, _, feature_size = load_predictor_dataset(predictor_dataset_folder,typ="coef")
-    pred_Batch_Size = int(config["predictor"]["pred_Batch_Size"])
 
-    criterion = map_predictor_criterion(config["predictor"]["criterion"])
     reduction_start_time = time.time()
     total_importance=[]
 
     if feature_importance_source == "gradients":
+        try:
+            model, train_predictor, test_predictor = get_PredictorModel(config["predictor"]["Predictor_model"])
+            predictor_model = model(
+                in_channels=feature_size,
+                dim=dim,
+                drop_out=drop_out,
+                out_channels=1)
+            model_weigth_path = f"{config['path']['result_folder']}/predictor_model_weight.pt"
+            predictor_model.load_state_dict(torch.load(model_weigth_path))
+            predictor_model = predictor_model.to(device)
+            predictor_model.eval()
+        except:
+            raise ValueError("Wrong pre-trained predictor path")
+        base_space = deepcopy(e_search_space)
+        total_importance = []
+        train_loader, _, feature_size = load_predictor_dataset(predictor_dataset_folder, typ="coef")
+        pred_Batch_Size = int(config["predictor"]["pred_Batch_Size"])
+
+        criterion = map_predictor_criterion(config["predictor"]["criterion"])
         feature_importance = compute_gradient_feature_importance(predictor_model, train_loader, criterion)
         # print(f"feature importance size is:, |Type: {type(feature_importance)}| Size{feature_importance.shape}")
         # print(" this is feature importance :", feature_importance)
@@ -265,6 +270,7 @@ def feat_coef_reduce_and_rank(e_search_space, predictor_graph_edge_index,
     TopK_models = []
     start_predict_time = time.time()
     print("Start prediction...")
+
     for i in tqdm(lists, total=len(lists)):
         a = i + int(config["param"]["batch_sample"])
         if a > len(sample_list):
@@ -272,17 +278,21 @@ def feat_coef_reduce_and_rank(e_search_space, predictor_graph_edge_index,
         sample = sample_list[i:a]
         #    transform model configuration into graph data
         graph_list = []
-        for model_config in sample:
+        save_gnn_config_file(config['path']["gnn_config_file"],sample)
+        for num,model_config in enumerate(sample):
             # print(f"this is the model configuration {model_config}")
             x,_ = get_nodes_features(model_config, e_search_space)
             edge_index = get_edge_index(model_config, predictor_graph_edge_index)
             graphdata = Data(x=x,
                              edge_index=edge_index,
                              num_nodes=x.shape[0],
-                             model_config_choices=deepcopy(model_config))
+                             model_config_choices=num)
             graph_list.append(graphdata)
         sample_dataset = DataLoader(graph_list, batch_size=Batch_Size, shuffle=False)
-        TopK = predict_neural_performance_using_gnn(predictor_model, sample_dataset)
+        sample_loader = accelerator.prepare(sample_dataset)
+        TopK = predict_neural_performance_using_gnn(accelerator=accelerator,
+                                                    model=best_predictor_model,
+                                                    graphLoader=sample_loader)
         TopK_models.append(TopK)
     TopK_model = pd.concat(TopK_models)
     if metric_rule == "max":
@@ -747,8 +757,8 @@ def prob_reduce_and_rank(e_search_space, predictor_graph_edge_index, feature_siz
     TopK_model.to_excel(f"{config['path']['result_folder']}/Topk_model_configs.xlsx")
     return TopK_final
 
-
-def predict_neural_performance_using_gnn(model, graphLoader):
+@torch.no_grad()
+def predict_neural_performance_using_gnn(accelerator, model, graphLoader):
     set_seed()
     search_metric = config["param"]["search_metric"]
     metric_rule = config["param"]["best_search_metric_rule"]
@@ -756,18 +766,23 @@ def predict_neural_performance_using_gnn(model, graphLoader):
     prediction_dict = {'model_config': [], search_metric: []}
     k = int(config["param"]["k"])
     i = 0
+    with open(config["path"]["gnn_config_file"],"r") as cfr_file:
+        model_configs = list(cfr_file.readlines())
 
     for data in graphLoader:
         performance = []
         i += 1
-        data = data.to(device)
-        pred = model(data)
+        data = data.to(accelerator.device)
+        choice=data.model_config_choices.to(accelerator.device)
+        preds = model(data)
+        pred = accelerator.gather(preds)
+        all_choices=accelerator.gather(choice)
         performance = np.append(performance, pred.cpu().detach().numpy())
-        choices = deepcopy(data.model_config_choices)
+        choices = np.append(performance, all_choices.cpu().detach().numpy())
         choice = []
         for a in range(len(pred)):  # loop for retriving the GNN configuration of each graph in the data loader
             temp_list = []
-            for key, values in choices.items():
+            for key, values in retrieve_gnn_config(choices).items():
                 # temp_list.append((key,values[1][a].item()))
                 temp_list.append((key, values[a][1]))
             choice.append(temp_list)
