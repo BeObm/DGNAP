@@ -98,8 +98,9 @@ def train_predictor_using_graph_dataset(predictor_dataset_folder):
                                       criterion=criterion,
                                       model_trainer=train_predictor)
 
-    unwrapped_model = accelerator.unwrap_model(best_predictor_model)
-    accelerator.save(unwrapped_model.state_dict(), save_path)
+    accelerator.save_pretrained(model=best_predictor_model,save_directory=f"{config['path']['result_folder']}/predictor_model_weight")
+    # unwrapped_model = accelerator.unwrap_model(best_predictor_model)
+    # accelerator.save(unwrapped_model.state_dict(), save_path)
     # add_config("predictor", "best_loss", round(best_loss, 6))
     metrics_list = map_predictor_metrics()
     predictor_performance = test_predictor(accelerator=accelerator,
@@ -217,14 +218,12 @@ def feat_coef_reduce_and_rank(e_search_space, predictor_graph_edge_index,
 
         total_importance = []
         train_loader, _, feature_size = load_predictor_dataset(predictor_dataset_folder, typ="coef")
-        pred_Batch_Size = Batch_Size
 
         criterion = map_predictor_criterion(config["predictor"]["criterion"])
         feature_importance = compute_gradient_feature_importance(predictor_model, train_loader, criterion)
-        # print(f"feature importance size is:, |Type: {type(feature_importance)}| Size{feature_importance.shape}")
-        # print(" this is feature importance :", feature_importance)
+
     elif feature_importance_source == "shapley_values":
-        feature_importance = compute_shapley_value()# predictor_model, train_loader, criterion
+        feature_importance = compute_shapley_value()
         print("feature importance size is:", len(feature_importance))
     else:
         raise ValueError("Wrong value for feature importance computation type")
@@ -252,15 +251,7 @@ def feat_coef_reduce_and_rank(e_search_space, predictor_graph_edge_index,
                     print(f"The option {option} is no longer present in the search space")
             else:
                 pass
-                # positive_values = [xn for xn in fi if xn >= 0]
-                # # mean_ = sum(positive_values) / len(positive_values) if positive_values else 0
-                # mean_ = sum(fi)/len(fi)
-                # if option_importance <= mean_*2/3:
-                #     if option in e_search_space[fct] and len(e_search_space[fct]) > 1:
-                #         e_search_space[fct].pop(option)
-                #         print(f"The option {option} with importance {option_importance} is removed from the search space")
-                #     else:
-                #         print(f"The option {option} is no longer present in the search space")
+
     df_sum =pd.DataFrame(shap_summary)
     df_sum.to_excel(f"{config['path']['result_folder']}/Shapley——values-summary.xlsx")
     add_config("time", "sp_reduce", round(time.time() - reduction_start_time, 4))
@@ -290,6 +281,20 @@ def feat_coef_reduce_and_rank(e_search_space, predictor_graph_edge_index,
             graph_list.append(graphdata)
         sample_dataset = DataLoader(graph_list, batch_size=Batch_Size, shuffle=False)
         sample_loader = accelerator.prepare(sample_dataset)
+        try:
+            model, train_predictor, test_predictor = get_PredictorModel(config["predictor"]["Predictor_model"])
+            predictor_model = model(
+                in_channels=feature_size,
+                dim=dim,
+                drop_out=drop_out,
+                out_channels=1)
+            best_predictor_model = accelerator.load_state(f"{config['path']['result_folder']}/predictor_model_weight")
+        except:
+            raise ValueError("Wrong pre-trained predictor path")
+
+
+
+
         TopK = predict_neural_performance_using_gnn(accelerator=accelerator,
                                                     model=best_predictor_model,
                                                     graphLoader=sample_loader)
@@ -391,19 +396,7 @@ def prob_reduce_and_rank(e_search_space, predictor_graph_edge_index, feature_siz
     search_metric = config["param"]["search_metric"]
     metric_rule = config["param"]["best_search_metric_rule"]
     # Load predictor model and weights
-    try:
-        model, train_predictor, test_predictor = get_PredictorModel(config["predictor"]["Predictor_model"])
-        predictor_model = model(
-             in_channels=feature_size,
-             dim=dim,
-             drop_out=drop_out,
-            out_channels=1)
-        model_weigth_path = f"{config['path']['result_folder']}/predictor_model_weight.pt"
-        predictor_model.load_state_dict(torch.load(model_weigth_path))
-        predictor_model = predictor_model.to(device)
-        predictor_model.eval()
-    except:
-        raise ValueError("Wrong pre-trained predictor path")
+
     base_space = {}
     rnd = 1
     reduction_start_time = time.time()
@@ -415,12 +408,13 @@ def prob_reduce_and_rank(e_search_space, predictor_graph_edge_index, feature_siz
 
         lists = [elt for elt in range(0, len(sample_list), int(config["param"]["batch_sample"]))]
         print(f"Start Round Number {rnd} of Search space reduction")
+
         for i in tqdm(lists, total=len(lists)):
             a = i + int(config["param"]["batch_sample"])
             if a > len(sample_list):
                 a = len(sample_list)
             sample = sample_list[i:a]
-
+            save_gnn_config_file(config["path"]["gnn_config_file"], sample)
             #    transform model configuration into graph data
             graph_list = []
             for model_config in sample:
@@ -431,10 +425,13 @@ def prob_reduce_and_rank(e_search_space, predictor_graph_edge_index, feature_siz
                                  num_nodes=x.shape[0],
                                  model_config_choices=deepcopy(model_config))
                 graph_list.append(graphdata)
-            sample_dataset = DataLoader(graph_list, batch_size=Batch_Size, shuffle=False)
 
-            TopK = predict_neural_performance_using_gnn(predictor_model, sample_dataset)
-            TopK_models.append(TopK)
+        sample_dataset = DataLoader(sample_dataset, batch_size=Batch_Size, shuffle=False)
+        sample_loader = accelerator.prepare(sample_dataset)
+        TopK = predict_neural_performance_using_gnn(accelerator=accelerator,
+                                                    model=best_predictor_model,
+                                                    graphLoader=sample_loader)
+        TopK_models.append(TopK)
         TopK_model = pd.concat(TopK_models)
         if metric_rule == "max":
             TopK_model = TopK_model.nlargest(k, search_metric, keep="all")
@@ -480,6 +477,7 @@ def prob_reduce_and_rank(e_search_space, predictor_graph_edge_index, feature_siz
         sample = sample_list[i:a]
         #    transform model configuration into graph data
         graph_list = []
+        save_gnn_config_file(config['path']["gnn_config_file"], sample)
         for model_config in sample:
             # print(f"this is the model configuration {model_config}")
             x,_ = get_nodes_features(model_config, e_search_space)
@@ -488,8 +486,12 @@ def prob_reduce_and_rank(e_search_space, predictor_graph_edge_index, feature_siz
                              num_nodes=x.shape[0],
                              model_config_choices=deepcopy(model_config))
             graph_list.append(graphdata)
+
         sample_dataset = DataLoader(graph_list, batch_size=Batch_Size, shuffle=False)
-        TopK = predict_neural_performance_using_gnn(predictor_model, sample_dataset)
+        sample_loader = accelerator.prepare(sample_dataset)
+        TopK = predict_neural_performance_using_gnn(accelerator=accelerator,
+                                                    model=best_predictor_model,
+                                                    graphLoader=sample_loader)
         TopK_models.append(TopK)
     TopK_model = pd.concat(TopK_models)
     if metric_rule == "max":
@@ -507,7 +509,7 @@ def prob_reduce_and_rank(e_search_space, predictor_graph_edge_index, feature_siz
     TopK_model.to_excel(f"{config['path']['result_folder']}/Topk_model_configs.xlsx")
     return TopK_final
 
-def gradient_reduce_and_rank(e_search_space, predictor_graph_edge_index, feature_size, option_decoder, ratio_treshold=0.3):
+def gradient_reduce_and_rank(e_search_space, predictor_graph_edge_index, feature_size, option_decoder, accelerator, best_predictor_model, ratio_treshold=0.3):
     set_seed()
     dim = int(config["predictor"]["dim"])
     drop_out = float(config["predictor"]["drop_out"])
@@ -515,20 +517,7 @@ def gradient_reduce_and_rank(e_search_space, predictor_graph_edge_index, feature
     predict_sample = int(config["param"]["predict_sample"])
     search_metric = config["param"]["search_metric"]
     metric_rule = config["param"]["best_search_metric_rule"]
-    # Load predictor model and weights
-    try:
-        model, train_predictor, test_predictor = get_PredictorModel(config["predictor"]["Predictor_model"])
-        predictor_model = model(
-            in_channels=feature_size,
-            dim=dim,
-            drop_out=drop_out,
-            out_channels=1)
-        model_weigth_path = f"{config['path']['result_folder']}/predictor_model_weight.pt"
-        predictor_model.load_state_dict(torch.load(model_weigth_path))
-        predictor_model = predictor_model.to(device)
-        predictor_model.eval()
-    except:
-        raise ValueError("Wrong pre-trained predictor path")
+
     base_space = {}
     rnd = 1
     while base_space != e_search_space:
@@ -547,6 +536,7 @@ def gradient_reduce_and_rank(e_search_space, predictor_graph_edge_index, feature
 
             #    transform model configuration into graph data
             graph_list = []
+            save_gnn_config_file(config['path']["gnn_config_file"], sample)
             for model_config in sample:
                 x,_ = get_nodes_features(model_config, e_search_space)
                 edge_index = get_edge_index(model_config, predictor_graph_edge_index)
@@ -556,8 +546,11 @@ def gradient_reduce_and_rank(e_search_space, predictor_graph_edge_index, feature
                                  model_config_choices=deepcopy(model_config))
                 graph_list.append(graphdata)
             sample_dataset = DataLoader(graph_list, batch_size=Batch_Size, shuffle=False)
+            sample_loader = accelerator.prepare(sample_dataset)
+            TopK = predict_neural_performance_using_gnn(accelerator=accelerator,
+                                                        model=best_predictor_model,
+                                                        graphLoader=sample_loader)
 
-            TopK = predict_neural_performance_using_gnn(predictor_model, sample_dataset)
             TopK_models.append(TopK)
         TopK_model = pd.concat(TopK_models)
         if metric_rule == "max":
@@ -602,6 +595,7 @@ def gradient_reduce_and_rank(e_search_space, predictor_graph_edge_index, feature
         sample = sample_list[i:a]
         #    transform model configuration into graph data
         graph_list = []
+        save_gnn_config_file(config['path']["gnn_config_file"], sample)
         for model_config in sample:
             x,_ = get_nodes_features(model_config, e_search_space)
             graphdata = Data(x=x,
@@ -609,8 +603,13 @@ def gradient_reduce_and_rank(e_search_space, predictor_graph_edge_index, feature
                              num_nodes=x.shape[0],
                              model_config_choices=deepcopy(model_config))
             graph_list.append(graphdata)
+
         sample_dataset = DataLoader(graph_list, batch_size=Batch_Size, shuffle=False)
-        TopK = predict_neural_performance_using_gnn(predictor_model, sample_dataset)
+        sample_loader = accelerator.prepare(sample_dataset)
+        TopK = predict_neural_performance_using_gnn(accelerator=accelerator,
+                                                    model=best_predictor_model,
+                                                    graphLoader=sample_loader)
+
         TopK_models.append(TopK)
     TopK_model = pd.concat(TopK_models)
     if metric_rule == "max":
@@ -629,7 +628,7 @@ def gradient_reduce_and_rank(e_search_space, predictor_graph_edge_index, feature
     return TopK_final
 
 
-def prob_reduce_and_rank(e_search_space, predictor_graph_edge_index, feature_size, option_decoder, ratio_treshold=0.3):
+def prob_reduce_and_rank(e_search_space, predictor_graph_edge_index, feature_size, option_decoder,accelerator, best_predictor_model, ratio_treshold=0.3):
     set_seed()
     dim = int(config["predictor"]["dim"])
     drop_out = float(config["predictor"]["drop_out"])
@@ -637,20 +636,7 @@ def prob_reduce_and_rank(e_search_space, predictor_graph_edge_index, feature_siz
     predict_sample = int(config["param"]["predict_sample"])
     search_metric = config["param"]["search_metric"]
     metric_rule = config["param"]["best_search_metric_rule"]
-    # Load predictor model and weights
-    try:
-        model, train_predictor, test_predictor = get_PredictorModel(config["predictor"]["Predictor_model"])
-        predictor_model = model(
-            in_channels=feature_size,
-            dim=dim,
-            drop_out=drop_out,
-            out_channels=1)
-        model_weigth_path = f"{config['path']['result_folder']}/predictor_model_weight.pt"
-        predictor_model.load_state_dict(torch.load(model_weigth_path))
-        predictor_model = predictor_model.to(device)
-        predictor_model.eval()
-    except:
-        raise ValueError("Wrong pre-trained predictor path")
+
     base_space = {}
     rnd = 1
     while base_space != e_search_space:
@@ -669,6 +655,7 @@ def prob_reduce_and_rank(e_search_space, predictor_graph_edge_index, feature_siz
 
             #    transform model configuration into graph data
             graph_list = []
+            save_gnn_config_file(config['path']["gnn_config_file"], sample)
             for model_config in sample:
                 x,_ = get_nodes_features(model_config, e_search_space)
                 edge_index = get_edge_index(model_config, predictor_graph_edge_index)
@@ -677,9 +664,13 @@ def prob_reduce_and_rank(e_search_space, predictor_graph_edge_index, feature_siz
                                  num_nodes=x.shape[0],
                                  model_config_choices=deepcopy(model_config))
                 graph_list.append(graphdata)
-            sample_dataset = DataLoader(graph_list, batch_size=Batch_Size, shuffle=False)
 
-            TopK = predict_neural_performance_using_gnn(predictor_model, sample_dataset)
+            sample_dataset = DataLoader(graph_list, batch_size=Batch_Size, shuffle=False)
+            sample_loader = accelerator.prepare(sample_dataset)
+            TopK = predict_neural_performance_using_gnn(accelerator=accelerator,
+                                                        model=best_predictor_model,
+                                                        graphLoader=sample_loader)
+
             TopK_models.append(TopK)
         TopK_model = pd.concat(TopK_models)
         if metric_rule == "max":
@@ -724,6 +715,7 @@ def prob_reduce_and_rank(e_search_space, predictor_graph_edge_index, feature_siz
         sample = sample_list[i:a]
         #    transform model configuration into graph data
         graph_list = []
+        save_gnn_config_file(config['path']["gnn_config_file"], sample)
         for model_config in sample:
             # print(f"this is the model configuration {model_config}")
             x,_ = get_nodes_features(model_config, e_search_space)
@@ -732,8 +724,13 @@ def prob_reduce_and_rank(e_search_space, predictor_graph_edge_index, feature_siz
                              num_nodes=x.shape[0],
                              model_config_choices=deepcopy(model_config))
             graph_list.append(graphdata)
+
         sample_dataset = DataLoader(graph_list, batch_size=Batch_Size, shuffle=False)
-        TopK = predict_neural_performance_using_gnn(predictor_model, sample_dataset)
+        sample_loader = accelerator.prepare(sample_dataset)
+        TopK = predict_neural_performance_using_gnn(accelerator=accelerator,
+                                                    model=best_predictor_model,
+                                                    graphLoader=sample_loader)
+
         TopK_models.append(TopK)
     TopK_model = pd.concat(TopK_models)
     if metric_rule == "max":
@@ -775,18 +772,20 @@ def predict_neural_performance_using_gnn(accelerator, model, graphLoader):
         records = list(zip(choices,performance))
 
         accelerator.wait_for_everyone()
-        for record in records:
-            prediction_dict['model_config'].append(config_list[record[0]])
-            prediction_dict[search_metric].append(record[1].item())
+        if accelerator.is_local_main_process:
+            for record in records:
+                prediction_dict['model_config'].append(config_list[record[0]])
+                prediction_dict[search_metric].append(record[1].item())
 
     accelerator.wait_for_everyone()
-    df = pd.DataFrame.from_dict(prediction_dict)
-    if metric_rule == "max":
-        TopK = df.nlargest(n=k, columns=search_metric, keep="all")
-    elif metric_rule == 'min':
-        TopK = df.nsmallest(n=k, columns=search_metric, keep="all")
-    TopK = TopK[:k]
-    return TopK
+        if accelerator.is_local_main_process:
+        df = pd.DataFrame.from_dict(prediction_dict)
+        if metric_rule == "max":
+            TopK = df.nlargest(n=k, columns=search_metric, keep="all")
+        elif metric_rule == 'min':
+            TopK = df.nsmallest(n=k, columns=search_metric, keep="all")
+        TopK = TopK[:k]
+        return TopK
 
 
 def rank_graphs(model, dataset, batch_size=32):

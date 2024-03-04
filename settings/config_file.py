@@ -77,7 +77,7 @@ def create_config_file(type_task, dataset_name,ngpu):
         "feature_size_choice": "total_choices",
         # total_functions total_choices  # for one hot encoding using graph dataset for predictor, use"total choices
         'type_input_graph': "directed",
-        "predict_sample": 500000,
+        "predict_sample": 500,
         "shapley_shap_type":"tree",  # kernel, tree
         "shapley_nsamples":600,
         "batch_sample": 100
@@ -92,7 +92,7 @@ def create_config_file(type_task, dataset_name,ngpu):
         "lr": 0.005,
         "wd": 0.0001,
         "momentum": 0.8,
-        "num_epoch": 700,
+        "num_epoch": 500,
         "optimizer": "adamW",
         "patience": 150,
         "best_loss":0

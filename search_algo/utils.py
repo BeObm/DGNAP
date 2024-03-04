@@ -218,7 +218,7 @@ def create_paths():
     result_detail_folder = osp.join(project_root_dir, f"""results/result_details/{config["dataset"]["type_task"]}""")
     os.makedirs(result_detail_folder, exist_ok=True)
     add_config("path", "result_detail_folder", result_detail_folder)
-    add_config("path", "gnn_config_file", f"{result_detail_folder}/gnn_config_file.json")
+    add_config("path", "gnn_config_file", f"{result_detail_folder}/gnn_config_file.txt")
 
     # Create here path for saving plots
     plots_folder = osp.join(result_folder, "plots")
@@ -249,7 +249,6 @@ def get_list_of_choice(sp):
 
 
 import json
-
 
 
 
