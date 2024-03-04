@@ -196,7 +196,7 @@ def feat_coef_reduce_and_rank(e_search_space, predictor_graph_edge_index,
     search_metric = config["param"]["search_metric"]
     metric_rule = config["param"]["best_search_metric_rule"]
     # Load predictor model and weights
-
+    base_space = deepcopy(e_search_space)
     reduction_start_time = time.time()
     total_importance=[]
 
@@ -214,7 +214,7 @@ def feat_coef_reduce_and_rank(e_search_space, predictor_graph_edge_index,
             predictor_model.eval()
         except:
             raise ValueError("Wrong pre-trained predictor path")
-        base_space = deepcopy(e_search_space)
+
         total_importance = []
         train_loader, _, feature_size = load_predictor_dataset(predictor_dataset_folder, typ="coef")
         pred_Batch_Size = Batch_Size
@@ -323,7 +323,7 @@ def compute_shapley_value():
     try:
          df = pd.read_csv(dataset_file)
     except:
-        df = pd.read_csv(f"""data/predictor_dataset/{config['dataset']['dataset_name']}/{config['dataset']['dataset_name']}_{config['param']['nb_gpu']}GPU""")
+        df = pd.read_csv(f"""data/predictor_dataset/{config['dataset']['dataset_name']}/shapley_dataset_{config['dataset']['dataset_name']}_{config['param']['nb_gpu']}GPU.csv""")
     df = df[:nsamples].sample(frac=1).reset_index(drop=True)
     Xo= df.drop(search_metric,axis=1)
     Yo = df[search_metric]
