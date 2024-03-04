@@ -323,7 +323,7 @@ def compute_shapley_value():
     try:
          df = pd.read_csv(dataset_file)
     except:
-        df = pd.read_csv("data/shapley_dataset.csv")
+        df = pd.read_csv(f"""data/predictor_dataset/{config['dataset']['dataset_name']}/{config['dataset']['dataset_name']}_{config['param']['nb_gpu']}GPU""")
     df = df[:nsamples].sample(frac=1).reset_index(drop=True)
     Xo= df.drop(search_metric,axis=1)
     Yo = df[search_metric]
@@ -786,8 +786,6 @@ def predict_neural_performance_using_gnn(accelerator, model, graphLoader):
         for record in records:
             prediction_dict['model_config'].append(retrieve_gnn_config(config["path"]["gnn_config_file"],int(record[0])))
             prediction_dict[search_metric].append(record[1].item())
-            print(f"this is acc {record[1].item()}  |type {type(record[1].item())}")
-
 
 
 

@@ -250,17 +250,35 @@ def get_list_of_choice(sp):
 
 import json
 
+
+
+
+
 def save_gnn_config_file(filename,data):
 
     with open(filename, 'w') as f:
-        json.dump(data, f)
+        for item in data:
+            f.write(str(item) + '\n')
 
-def retrieve_gnn_config(filename, index):
+def retrieve_gnn_config(filename, index=None):
+    """
+    Retrieve the list of dictionaries from a text file.
 
+    Args:
+        filename (str): Name of the file to retrieve data from.
+        index (int, optional): Index of the dictionary to retrieve from the list.
+            If None, returns the whole list. Defaults to None.
+
+    Returns:
+        list or dict: List of dictionaries retrieved from the file, or a single dictionary if index is specified.
+    """
     with open(filename, 'r') as f:
-        data = json.load(f)
-        if 0 <= index < len(data):
-            return data[index]
+        data = [eval(line.strip()) for line in f.readlines()]
+        if index is not None:
+            if 0 <= index < len(data):
+                return data[index]
+            else:
+                raise IndexError("Index out of range")
         else:
-            raise IndexError("Index out of range")
+            return data
 

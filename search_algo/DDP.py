@@ -39,7 +39,7 @@ def prepare_data_loader(data, batch_size=Batch_Size,shuffle=False):
     
 def ddp_module(accelerator, total_epochs: int, model_to_train, optimizer, train_dataloader,criterion, model_trainer):
     set_seed()
-
+    print("training model...")
     train_dataloader, model,optimizer = accelerator.prepare(train_dataloader,model_to_train,optimizer)
     model.train()
     for epoch in range(total_epochs):
