@@ -60,7 +60,7 @@ def create_config_file(type_task, dataset_name,ngpu):
         "Batch_Size":Batch_Size,
         "num_seed":42,
         "budget": 800,
-        "k": 50,
+        "k": 150,
         "z_sample": 1,  # Number of time  sampled models are trained before we report their performance
         "z_topk": 1,
         "z_final": 10,
@@ -77,10 +77,10 @@ def create_config_file(type_task, dataset_name,ngpu):
         "feature_size_choice": "total_choices",
         # total_functions total_choices  # for one hot encoding using graph dataset for predictor, use"total choices
         'type_input_graph': "directed",
-        "predict_sample": 5000,
+        "predict_sample": 500000,
         "shapley_shap_type":"tree",  # kernel, tree
         "shapley_nsamples":600,
-        "batch_sample": 10000
+        "batch_sample": 100
     }
 
     config["predictor"] = {
@@ -92,7 +92,7 @@ def create_config_file(type_task, dataset_name,ngpu):
         "lr": 0.005,
         "wd": 0.0001,
         "momentum": 0.8,
-        "num_epoch": 100,
+        "num_epoch": 700,
         "optimizer": "adamW",
         "patience": 150,
         "best_loss":0

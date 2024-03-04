@@ -25,7 +25,7 @@ if __name__ == "__main__":
     parser.add_argument("--dataset", help="Dataset name", default="Cora")
     parser.add_argument("--type_task", help="type_task name", default="node_classification", choices=["graph_anomaly", "graph_classification", "graph_regression","node_classification"])
     parser.add_argument("--search_space_name", help="search space name", default="spatial_gnap_nl_space")
-    parser.add_argument("--sp_reduce", type=str, default="shapley_values", choices=["none", "probs", "gradients", "shapley_values"],help="search_space_reduction_strategy")
+    parser.add_argument("--sp_reduce", type=str, default="none", choices=["none", "probs", "gradients", "shapley_values"],help="search_space_reduction_strategy")
     parser.add_argument("--search_metric", type=str, default="Accuracy_score", help="metric for search guidance")
     parser.add_argument("--best_search_metric_rule", type=str, default="max", help="best search metric rule",choices=["min","max"])
     parser.add_argument("--predictor", type=str, default="GNN_ranking", help="predictor type", choices=["GNN_ranking", "GNN_performance"])

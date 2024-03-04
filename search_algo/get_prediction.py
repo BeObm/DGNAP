@@ -38,7 +38,7 @@ def get_prediction(performance_records_path, e_search_space, predictor_graph_edg
         if config['param']['search_space_reduction_strategy'] == "none":
             TopK_final = predict_and_rank(e_search_space, predictor_graph_edge_index, feature_size)
         elif config['param']['search_space_reduction_strategy'] == 'probs':
-            TopK_final = prob_reduce_and_rank(e_search_space, predictor_graph_edge_index, feature_size, option_decoder)
+            TopK_final = prob_reduce_and_rank(e_search_space, predictor_graph_edge_index, feature_size, option_decoder,best_predictor_model,accelerator)
         elif config['param']['search_space_reduction_strategy'] in ["gradients", "shapley_values"]:
             TopK_final = feat_coef_reduce_and_rank(e_search_space=e_search_space,
                                                    predictor_graph_edge_index=predictor_graph_edge_index,
@@ -343,27 +343,21 @@ def compute_shapley_value():
         shap_value = explainer.shap_values(X)
         shap.summary_plot(shap_value, X, plot_type="bar")
     elif shap_type == "tree":
-        stkr = StackingRegressor(
-            estimators=[('rfr', RandomForestRegressor())],
-            final_estimator=RandomForestRegressor(),
-            cv=3
-        )
-        model = stkr.fit(X, Y)
-        # model = xgboost.XGBRegressor(max_depth=1, learning_rate=0.005, subsample=0.5, n_estimators=10000,
-        #                                     base_score=Y.mean())
-        # model.fit(X, Y, eval_set=[(X_val, Y_val)], verbose=1000)
+        # shap_model = CatBoostRegressor(iterations=300, learning_rate=0.1, random_seed=123)
 
-        # explainer = shap.TreeExplainer(model.predict, X, algorithm="sampling")
-        explainer = shap.Explainer(model.predict,X)
-        shap_value = explainer.shap_values(X)
-        shap.summary_plot(shap_value, X, plot_type="bar",feature_names=list(Xo.columns),title="Shapley Values Summary",)
+        shap_model = RandomForestRegressor(n_estimators=1000, max_depth=4)
 
+        shap_model.fit(X, Y)
 
-    print(f"Shapley values are as follows: | # samples:{len(shap_value)}")
-    print(shap_value)
-    print(f"Shapley computation time is {round((time.time() - start_time)/60, 4)} Minutes")
+        explainer = shap.TreeExplainer(shap_model)
+        shap_value = explainer(X)
+        shap.plots.bar(shap_value)
 
-    return shap_value
+    print(f"Shapley computation time is {round((time.time() - start_time) / 60, 4)} Minutes")
+
+    # print(f"This is shapley value format: {vars(shap_value._s)}")
+
+    return list(shap_value._s._objects["values"])
 
 
 def compute_gradient_feature_importance(model, sample_dataset, criterion):
@@ -388,7 +382,7 @@ def compute_gradient_feature_importance(model, sample_dataset, criterion):
 
     return torch.cat(feature_importance, dim=0)
 
-def prob_reduce_and_rank(e_search_space, predictor_graph_edge_index, feature_size, option_decoder, ratio_treshold=0.3):
+def prob_reduce_and_rank(e_search_space, predictor_graph_edge_index, feature_size, option_decoder, best_predictor_model,accelerator,ratio_treshold=0.3):
     set_seed()
     dim = int(config["predictor"]["dim"])
     drop_out = float(config["predictor"]["drop_out"])
@@ -766,29 +760,26 @@ def predict_neural_performance_using_gnn(accelerator, model, graphLoader):
     prediction_dict = {'model_config': [], search_metric: []}
     k = int(config["param"]["k"])
     i = 0
-    with open(config["path"]["gnn_config_file"],"r") as cfr_file:
-        model_configs = list(cfr_file.readlines())
-
+    #
+    config_list = retrieve_gnn_config(config["path"]["gnn_config_file"])
     for data in graphLoader:
         performance = []
         i += 1
-        data = data.to(accelerator.device)
-        choice=data.model_config_choices.to(accelerator.device)
+
+        choice=data.model_config_choices
         preds = model(data)
         pred = accelerator.gather(preds)
         all_choices=accelerator.gather(choice)
         performance = pred.cpu().detach().numpy()
         choices = all_choices.cpu().detach().numpy()
-
-
         records = list(zip(choices,performance))
 
+        accelerator.wait_for_everyone()
         for record in records:
-            prediction_dict['model_config'].append(retrieve_gnn_config(config["path"]["gnn_config_file"],int(record[0])))
+            prediction_dict['model_config'].append(config_list[record[0]])
             prediction_dict[search_metric].append(record[1].item())
 
-
-
+    accelerator.wait_for_everyone()
     df = pd.DataFrame.from_dict(prediction_dict)
     if metric_rule == "max":
         TopK = df.nlargest(n=k, columns=search_metric, keep="all")

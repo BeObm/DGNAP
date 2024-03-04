@@ -1,0 +1,34 @@
+
+ #############    Result report    (Time: 04-03_16h19)  #############
+Dataset: Cora 
+Type task: node_classification 
+Accuracy_score of the best sampled model: 0 
+Search space reduction strategy: gradients 
+ Initial Search space: #function=14 | # Option: 62| #Architectures:318504960  
+ Final Search space: #function=14 | # Option: 35| #Architectures:69120 
+Type of predictor loss: one_hot
+Node feature size: GNN_ranking
+Predictor dataset type: graph
+search metric: Accuracy_score
+Predictor metric: kendall_corr
+Predictor type of criterion: MarginRankingLoss
+Type of sampling : controlled_stratified_sampling
+Total budget: 800
+Number of samples: 740
+Number of TopK models: 50
+Best sampled model: {'gnnConv1': 'GraphConv', 'gnnConv2': 'GENConv', 'aggregation1': 'max', 'aggregation2': 'add', 'normalize1': 'InstanceNorm', 'normalize2': False, 'activation1': 'Elu', 'activation2': 'Relu', 'hidden_channels': 256, 'dropout': 0.2, 'lr': 0.005, 'weight_decay': 0, 'optimizer': 'adamW', 'criterion': 'CrossEntropyLoss'}
+Best Sampled model Accuracy_score: 0.0
+f"Best_model_Accuracy_score": 0.566
+predictor pearson_corr: |Train= 0.9243 |Val=0.6922 |Test=-0.238 
+predictor spearman_corr: |Train= 0.9182 |Val=0.6871 |Test=-0.2711 
+predictor kendall_corr: |Train= 0.794 |Val=0.5254 |Test=-0.1883 
+predictor Top_k_Acc: |Train= 0.6664 |Val=0.5909 |Test=0.449 
+predictor R2_score: |Train= 0.8497 |Val=0.4768 |Test=-26.6674 
+dataset_time_cost: 0.02
+search_space_reduction_time_cost: 7.5962
+Search time cost: 26590.45
+total search time cost: 26590.47
+Number of GPUs: 4.0
+---------------------------------------- END ----------------------------------------
+
+ 

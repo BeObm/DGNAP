@@ -179,7 +179,6 @@ def get_best_model(topk_list, option_decoder, dataset):
         if (config["predictor"]["predictor_dataset_type"]) == "graph":
 
             for choice,value in row["model_config"].items():
-                print(f'This id model config: {row["model_config"]}')
                 dict_model[choice] = value[0]
 
         elif (config["param"]["predictor_dataset_type"]) == "table":
