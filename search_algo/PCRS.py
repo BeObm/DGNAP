@@ -177,8 +177,10 @@ def get_best_model(topk_list, option_decoder, dataset):
         dict_model = {}  #
         txt_model = f"Model_Config: {row['model_config']} "
         if (config["predictor"]["predictor_dataset_type"]) == "graph":
-            for choice in row["model_config"]:
-                dict_model[choice[0]] = option_decoder[choice[1]]
+
+            for choice,value in row["model_config"].items():
+                print(f'This id model config: {row["model_config"]}')
+                dict_model[choice] = value[0]
 
         elif (config["param"]["predictor_dataset_type"]) == "table":
             for function in topk_list.columns:

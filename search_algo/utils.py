@@ -256,7 +256,7 @@ def save_gnn_config_file(filename,data):
         json.dump(data, f)
 
 def retrieve_gnn_config(filename, index):
-    print(f"Retrieving GNN index {index}")
+
     with open(filename, 'r') as f:
         data = json.load(f)
         if 0 <= index < len(data):

@@ -132,7 +132,7 @@ def map_function_error(function):
     raise Exception("Error: {} is a wrong value".format(function))
 
 
-def evaluate_model_predictor(y_true, y_pred, metrics_list, title="Predictor training"):
+def evaluate_model_predictor(y_true, y_pred, metrics_list, title="Predictor training test"):
     search_metric = config["param"]["search_metric"]
     dataset_name = config["dataset"]["dataset_name"]
     predictor_performances = {}
@@ -147,7 +147,7 @@ def evaluate_model_predictor(y_true, y_pred, metrics_list, title="Predictor trai
     df.to_excel(f'{config["path"]["result_folder"]}/{title}_{dataset_name}.xlsx')
 
     if title == "Predictor training test":
-        col = "red"
+        col = "darkgreen"
     elif title == "Predictor validation test":
         col = "dodgerblue"
     elif title == "Predictor evaluation test":

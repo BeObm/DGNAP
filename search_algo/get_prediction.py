@@ -777,20 +777,19 @@ def predict_neural_performance_using_gnn(accelerator, model, graphLoader):
         preds = model(data)
         pred = accelerator.gather(preds)
         all_choices=accelerator.gather(choice)
-        performance = np.append(performance, pred.cpu().detach().numpy())
-        choices = np.append(performance, all_choices.cpu().detach().numpy())
+        performance = pred.cpu().detach().numpy()
+        choices = all_choices.cpu().detach().numpy()
 
-        # for a in range(len(pred)):  # loop for retriving the GNN configuration of each graph in the data loader
-        #     temp_list = []
-        #     for key, values in retrieve_gnn_config(choices).items():
-        #         # temp_list.append((key,values[1][a].item()))
-        #         temp_list.append((key, values[a][1]))
-        #     choice.append(temp_list)
-        records = zip(choices,performance)
+
+        records = list(zip(choices,performance))
+
         for record in records:
             prediction_dict['model_config'].append(retrieve_gnn_config(config["path"]["gnn_config_file"],int(record[0])))
-            prediction_dict[search_metric].extend(record[1])
-        print(f"This is the content of prediction dict : {prediction_dict}")
+            prediction_dict[search_metric].append(record[1].item())
+            print(f"this is acc {record[1].item()}  |type {type(record[1].item())}")
+
+
+
 
     df = pd.DataFrame.from_dict(prediction_dict)
     if metric_rule == "max":
