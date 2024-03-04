@@ -7,7 +7,7 @@ import torch
 def load_predictor_dataset(dataset_source_path,typ=""):
     set_seed()
     graphlist = []
-    pred_Batch_Size = int(config["predictor"]["pred_Batch_Size"])
+    pred_Batch_Size = Batch_Size
     for filename in glob.glob(f'{dataset_source_path}/*'):
         data = torch.load(filename)
         data.y = data.y.view(-1, 1)

@@ -14,22 +14,23 @@ num_workers = 8
 config = ConfigParser()
 Batch_Size = 32*4
 ncluster=500
-ddp_kwargs = DistributedDataParallelKwargs(find_unused_parameters=True)
-accelerator = Accelerator(kwargs_handlers=[ddp_kwargs])
+
 
 RunCode = dates = datetime.now().strftime("%d-%m_%Hh%M")
 
 
 def set_seed():
     # os.CUBLAS_WORKSPACE_CONFIG="4096:8"
-    num_seed=int(config["param"]["num_seed"])
+    seed=int(config["param"]["num_seed"])
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    random.seed(seed)
+    os.environ['PYTHONHASHSEED'] = str(seed)
+    os.environ['OMP_NUM_THREADS'] = '1'
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
-    torch.manual_seed(num_seed)
-    torch.cuda.manual_seed_all(num_seed)
-    np.random.seed(num_seed)
-    random.seed(num_seed)
-
 
 # =========== First level of  runing configurations  =================>
 
@@ -37,8 +38,8 @@ project_root_dir = os.path.abspath(os.getcwd())
 
 
 # Second  level of  running configurations
-def create_config_file(type_task, dataset_name):
-    configs_folder = osp.join(project_root_dir, f'results/{type_task}/{dataset_name}/{RunCode}')
+def create_config_file(type_task, dataset_name,ngpu):
+    configs_folder = osp.join(project_root_dir, f'results/{type_task}/{dataset_name}/{dataset_name}_{ngpu}GPU_{RunCode}')
     os.makedirs(configs_folder, exist_ok=True)
     config_filename = f"{configs_folder}/ConfigFile_{RunCode}.ini"
 
@@ -56,6 +57,7 @@ def create_config_file(type_task, dataset_name):
         "project_dir": project_root_dir,
         'config_filename': config_filename,
         "run_code": RunCode,
+        "Batch_Size":Batch_Size,
         "num_seed":42,
         "budget": 800,
         "k": 150,
@@ -75,31 +77,30 @@ def create_config_file(type_task, dataset_name):
         "feature_size_choice": "total_choices",
         # total_functions total_choices  # for one hot encoding using graph dataset for predictor, use"total choices
         'type_input_graph': "directed",
-        "predict_sample": 500,
-        "shapley_shap_type":"tree",  # kernel
+        "predict_sample": 500000,
+        "shapley_shap_type":"tree",  # kernel, tree
         "shapley_nsamples":600,
         "batch_sample": 100000
     }
 
     config["predictor"] = {
         "predictor_dataset_type": "graph",
-        "predictor_metric": "spearman_corr",
+        "predictor_metric": "kendall_corr",
         # , ["R2_score", "pearson_corr", "kendall_corr", "spearman_corr"], ["spearman_corr","map_score", "ndcg_score", "kendall_corr", "Top_k_Acc"]
-        "pred_Batch_Size": 128,
         "dim": 1024,
-        "drop_out": 0.3,
-        "lr": 0.0001,
+        "drop_out": 0.2,
+        "lr": 0.005,
         "wd": 0.0001,
         "momentum": 0.8,
-        "num_epoch": 500,
+        "num_epoch": 700,
         "optimizer": "adamW",
-        "patience": 50,
+        "patience": 150,
         "best_loss":0
     }
 
     config["time"] = {
-        "distribution_time": 00,
-        "sampling_time": 00
+        "distribution_time": "Not applicable",
+        "sampling_time": "Not applicable"
     }
 
     with open(config_filename, "w") as file:
