@@ -217,7 +217,7 @@ def feat_coef_reduce_and_rank(e_search_space, predictor_graph_edge_index,
         base_space = deepcopy(e_search_space)
         total_importance = []
         train_loader, _, feature_size = load_predictor_dataset(predictor_dataset_folder, typ="coef")
-        pred_Batch_Size = int(config["predictor"]["pred_Batch_Size"])
+        pred_Batch_Size = Batch_Size
 
         criterion = map_predictor_criterion(config["predictor"]["criterion"])
         feature_importance = compute_gradient_feature_importance(predictor_model, train_loader, criterion)
@@ -779,15 +779,18 @@ def predict_neural_performance_using_gnn(accelerator, model, graphLoader):
         all_choices=accelerator.gather(choice)
         performance = np.append(performance, pred.cpu().detach().numpy())
         choices = np.append(performance, all_choices.cpu().detach().numpy())
-        choice = []
-        for a in range(len(pred)):  # loop for retriving the GNN configuration of each graph in the data loader
-            temp_list = []
-            for key, values in retrieve_gnn_config(choices).items():
-                # temp_list.append((key,values[1][a].item()))
-                temp_list.append((key, values[a][1]))
-            choice.append(temp_list)
-        prediction_dict['model_config'].extend(choice)
-        prediction_dict[search_metric].extend(performance)
+
+        # for a in range(len(pred)):  # loop for retriving the GNN configuration of each graph in the data loader
+        #     temp_list = []
+        #     for key, values in retrieve_gnn_config(choices).items():
+        #         # temp_list.append((key,values[1][a].item()))
+        #         temp_list.append((key, values[a][1]))
+        #     choice.append(temp_list)
+        records = zip(choices,performance)
+        for record in records:
+            prediction_dict['model_config'].append(retrieve_gnn_config(config["path"]["gnn_config_file"],int(record[0])))
+            prediction_dict[search_metric].extend(record[1])
+        print(f"This is the content of prediction dict : {prediction_dict}")
 
     df = pd.DataFrame.from_dict(prediction_dict)
     if metric_rule == "max":

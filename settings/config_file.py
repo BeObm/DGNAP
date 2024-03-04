@@ -12,7 +12,7 @@ from accelerate import DistributedDataParallelKwargs
 num_workers = 8
 
 config = ConfigParser()
-Batch_Size = 32*4
+Batch_Size = 32*1
 ncluster=500
 
 
@@ -60,7 +60,7 @@ def create_config_file(type_task, dataset_name,ngpu):
         "Batch_Size":Batch_Size,
         "num_seed":42,
         "budget": 800,
-        "k": 150,
+        "k": 15,
         "z_sample": 1,  # Number of time  sampled models are trained before we report their performance
         "z_topk": 1,
         "z_final": 10,
@@ -68,8 +68,8 @@ def create_config_file(type_task, dataset_name,ngpu):
         "nfcode": 56,  # number of digit for each function code when using embedding method
         "noptioncode": 8,
         "sample_model_epochs": 100,
-        "topk_model_epochs": 100,
-        "best_model_epochs": 400,
+        "topk_model_epochs": 10,
+        "best_model_epochs": 40,
         "patience": 100,
         "encoding_method": "one_hot",  # ={one_hot, embedding,index_embedding}
         "type_sampling": "controlled_stratified_sampling",
@@ -77,10 +77,10 @@ def create_config_file(type_task, dataset_name,ngpu):
         "feature_size_choice": "total_choices",
         # total_functions total_choices  # for one hot encoding using graph dataset for predictor, use"total choices
         'type_input_graph': "directed",
-        "predict_sample": 500000,
+        "predict_sample": 500,
         "shapley_shap_type":"tree",  # kernel, tree
         "shapley_nsamples":600,
-        "batch_sample": 100000
+        "batch_sample": 10000
     }
 
     config["predictor"] = {
@@ -92,7 +92,7 @@ def create_config_file(type_task, dataset_name,ngpu):
         "lr": 0.005,
         "wd": 0.0001,
         "momentum": 0.8,
-        "num_epoch": 700,
+        "num_epoch": 50,
         "optimizer": "adamW",
         "patience": 150,
         "best_loss":0

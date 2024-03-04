@@ -22,7 +22,7 @@ if __name__ == "__main__":
 
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", help="Dataset name", default="CS")
+    parser.add_argument("--dataset", help="Dataset name", default="Cora")
     parser.add_argument("--type_task", help="type_task name", default="node_classification", choices=["graph_anomaly", "graph_classification", "graph_regression","node_classification"])
     parser.add_argument("--search_space_name", help="search space name", default="spatial_gnap_nl_space")
     parser.add_argument("--sp_reduce", type=str, default="gradients", choices=["none", "probs", "gradients", "shapley_values"],help="search_space_reduction_strategy")

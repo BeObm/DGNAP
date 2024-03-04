@@ -210,16 +210,15 @@ def save_search_space_evolution(search_space, rnd):
 
 def create_paths():
     # Create here path for recording model performance distribution
-    result_folder = osp.join(project_root_dir, f'results/{config["dataset"]["type_task"]}/{config["dataset"]["dataset_name"]}/{RunCode}')
+    result_folder = osp.join(project_root_dir, f"""results/{config["dataset"]["type_task"]}/{config["dataset"]["dataset_name"]}/{config["dataset"]["dataset_name"]}_{config["param"]["nb_gpu"]}GPU_{RunCode}""")
     os.makedirs(result_folder, exist_ok=True)
     add_config("path", "result_folder", result_folder)
 
     # Create here path for recording details about the result
-    result_detail_folder = osp.join(project_root_dir, f'results/result_details/{config["dataset"]["type_task"]}')
+    result_detail_folder = osp.join(project_root_dir, f"""results/result_details/{config["dataset"]["type_task"]}""")
     os.makedirs(result_detail_folder, exist_ok=True)
     add_config("path", "result_detail_folder", result_detail_folder)
-    add_config("path", "graph_config_file", f"{result_detail_folder}/gnn_config_file.txt")
-
+    add_config("path", "gnn_config_file", f"{result_detail_folder}/gnn_config_file.json")
 
     # Create here path for saving plots
     plots_folder = osp.join(result_folder, "plots")
@@ -227,7 +226,7 @@ def create_paths():
     add_config("path", "plots_folder", plots_folder)
 
     # create here path for saving predictor results
-    predictor_results_folder = osp.join(result_folder, f"predictor_training_data(#GPU={config['param']['nb_gpu']})")
+    predictor_results_folder = osp.join(result_folder, f"""pred._dataset_{config["dataset"]["dataset_name"]}_{config['param']['nb_gpu']}GPU)""")
     os.makedirs(predictor_results_folder, exist_ok=True)
     add_config("path", "predictor_dataset_folder", predictor_results_folder)
 
@@ -257,7 +256,7 @@ def save_gnn_config_file(filename,data):
         json.dump(data, f)
 
 def retrieve_gnn_config(filename, index):
-
+    print(f"Retrieving GNN index {index}")
     with open(filename, 'r') as f:
         data = json.load(f)
         if 0 <= index < len(data):

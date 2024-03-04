@@ -5,6 +5,7 @@ import torch
 
 
 def load_predictor_dataset(dataset_source_path,typ=""):
+    print(f"Loading predictor dataset from {dataset_source_path}...")
     set_seed()
     graphlist = []
     pred_Batch_Size = Batch_Size
