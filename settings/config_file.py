@@ -9,10 +9,12 @@ import os.path as osp
 import os
 from accelerate import Accelerator
 from accelerate import DistributedDataParallelKwargs
+
+ddp_kwargs = DistributedDataParallelKwargs(find_unused_parameters=True)
+accelerator = Accelerator(kwargs_handlers=[ddp_kwargs])
 num_workers = 8
 
 config = ConfigParser()
-Batch_Size = 32*4
 ncluster=500
 
 
@@ -57,7 +59,7 @@ def create_config_file(type_task, dataset_name,ngpu):
         "project_dir": project_root_dir,
         'config_filename': config_filename,
         "run_code": RunCode,
-        "Batch_Size":Batch_Size,
+        "Batch_Size":128,
         "num_seed":42,
         "budget": 800,
         "k": 150,
@@ -68,8 +70,8 @@ def create_config_file(type_task, dataset_name,ngpu):
         "nfcode": 56,  # number of digit for each function code when using embedding method
         "noptioncode": 8,
         "sample_model_epochs": 100,
-        "topk_model_epochs": 100,
-        "best_model_epochs": 400,
+        "topk_model_epochs": 50,
+        "best_model_epochs": 100,
         "patience": 100,
         "encoding_method": "one_hot",  # ={one_hot, embedding,index_embedding}
         "type_sampling": "controlled_stratified_sampling",
@@ -77,7 +79,7 @@ def create_config_file(type_task, dataset_name,ngpu):
         "feature_size_choice": "total_choices",
         # total_functions total_choices  # for one hot encoding using graph dataset for predictor, use"total choices
         'type_input_graph': "directed",
-        "predict_sample": 500,
+        "predict_sample": 500000,
         "shapley_shap_type":"tree",  # kernel, tree
         "shapley_nsamples":600,
         "batch_sample": 100
@@ -88,13 +90,13 @@ def create_config_file(type_task, dataset_name,ngpu):
         "predictor_metric": "kendall_corr",
         # , ["R2_score", "pearson_corr", "kendall_corr", "spearman_corr"], ["spearman_corr","map_score", "ndcg_score", "kendall_corr", "Top_k_Acc"]
         "dim": 1024,
-        "drop_out": 0.2,
-        "lr": 0.005,
+        "drop_out": 0.4,
+        "lr": 0.0001,
         "wd": 0.0001,
         "momentum": 0.8,
         "num_epoch": 500,
         "optimizer": "adamW",
-        "patience": 150,
+        "patience": 50,
         "best_loss":0
     }
 

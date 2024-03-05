@@ -22,7 +22,7 @@ if __name__ == "__main__":
 
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", help="Dataset name", default="Cora")
+    parser.add_argument("--dataset", help="Dataset name", default="CS")
     parser.add_argument("--type_task", help="type_task name", default="node_classification", choices=["graph_anomaly", "graph_classification", "graph_regression","node_classification"])
     parser.add_argument("--search_space_name", help="search space name", default="spatial_gnap_nl_space")
     parser.add_argument("--sp_reduce", type=str, default="shapley_values", choices=["none", "probs", "gradients", "shapley_values"],help="search_space_reduction_strategy")
@@ -30,7 +30,7 @@ if __name__ == "__main__":
     parser.add_argument("--best_search_metric_rule", type=str, default="max", help="best search metric rule",choices=["min","max"])
     parser.add_argument("--predictor", type=str, default="GNN_ranking", help="predictor type", choices=["GNN_ranking", "GNN_performance"])
     parser.add_argument("--predictor_criterion", type=str, default="MarginRankingLoss", help="loss function for predictor", choices=["MSELoss","PairwiseLoss", "MarginRankingLoss"])
-    parser.add_argument("--nb_gpu", type=str, default=4, help="Number of GPU")
+    parser.add_argument("--nb_gpu", type=str, default=1, help="Number of GPU")
     args = parser.parse_args()
     create_config_file(args.type_task,args.dataset,args.nb_gpu)
     set_seed()
@@ -38,6 +38,7 @@ if __name__ == "__main__":
     add_config("dataset", "dataset_name", args.dataset)
     add_config("param", "search_metric", args.search_metric)
     add_config("param", "nb_gpu", args.nb_gpu)
+    add_config("param", "Batch_Size", args.nb_gpu*32)
     add_config("param", "search_space_reduction_strategy", args.sp_reduce)
     add_config("param", "best_search_metric_rule", args.best_search_metric_rule)
     add_config("predictor", "Predictor_model", args.predictor)
@@ -58,7 +59,7 @@ if __name__ == "__main__":
 
 
     e_search_space, option_decoder, predictor_graph_edge_index = create_e_search_space(args.search_space_name)
-    # performance_records_path = get_performance_distributions(e_search_space, dataset,predictor_graph_edge_index)
+    performance_records_path = get_performance_distributions(e_search_space, dataset,predictor_graph_edge_index)
     performance_records_path = f"""data/predictor_dataset/{config['dataset']['dataset_name']}/{config['dataset']['dataset_name']}_{config['param']['nb_gpu']}GPU"""
     search_start = time.time()
     dataset_time_cost = round(search_start - timestart, 2)

@@ -11,7 +11,6 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 import os
 import re
 from copy import deepcopy
-from settings.config_file import Batch_Size
 from torch.utils.data import Dataset
 from settings.config_file import *
 import torch.multiprocessing as mp
@@ -19,8 +18,8 @@ import torch.multiprocessing as mp
 
 
 
-def prepare_data_loader(data, batch_size=Batch_Size,shuffle=False):
-
+def prepare_data_loader(data, batch_size=0,shuffle=False):
+    Batch_Size = int(config['param']['Batch_Size'])
     if config["dataset"]["type_task"] =="node_classification":
         cluster_data = ClusterData(data, num_parts=ncluster)
         dataloader = ClusterLoader(cluster_data, batch_size=batch_size, shuffle=True)

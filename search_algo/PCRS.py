@@ -1,28 +1,22 @@
 # -*- coding: utf-8 -*-
 
-
+from settings.config_file import *
 import statistics as stat
-from copy import deepcopy
-from accelerate import Accelerator
-from torch.nn.parallel import DistributedDataParallel
-from accelerate import DistributedDataParallelKwargs
 from predictor_models.utils import *
 from torch_geometric.data import Data
 from search_space_manager.sample_models import *
 from load_data.load_data import load_dataset
 from GNN_models.graph_classification import *
-from settings.config_file import *
+
 import importlib
 from search_algo.DDP import *
 from tqdm.auto import tqdm
-from accelerate import Accelerator
-import torch.multiprocessing as mp
 
 def get_performance_distributions(e_search_space,
                                   dataset,
                                   predictor_graph_edge_index):  # get performance distribution of s*n models (n = search space size)
     set_seed()
-
+    Batch_Size = int(config['param']['Batch_Size'])
     num_run_sample = int(config["param"]["z_sample"])
     metric_rule = config["param"]["best_search_metric_rule"]
     epochs = int(config["param"]["sample_model_epochs"])
@@ -271,8 +265,7 @@ def get_option_maps(submodel):
 
 def run_model(submodel_config, train_data, test_data, in_chanels,
               num_class, epochs, numround=1, shared_weight=None, type_data="val",type_model="architecture"):
-    ddp_kwargs = DistributedDataParallelKwargs(find_unused_parameters=True)
-    accelerator = Accelerator(kwargs_handlers=[ddp_kwargs])
+
     search_metric = config["param"]["search_metric"]
     GNN_Model, train_model, test_model = get_train(config["dataset"]["type_task"])
     params_config = get_option_maps(submodel_config)

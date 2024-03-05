@@ -22,8 +22,7 @@ import shap
 import pandas as pd
 import numpy as np
 from predictor_models.utils import get_target
-from accelerate import Accelerator
-from accelerate import DistributedDataParallelKwargs
+
 
 device=torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -63,6 +62,7 @@ def get_PredictorModel(predictor_model):
 
 def train_predictor_using_graph_dataset(predictor_dataset_folder):
     set_seed()
+    Batch_Size = int(config['param']['Batch_Size'])
     optimizer = config["predictor"]["optimizer"]
     dim = int(config["predictor"]["dim"])
     drop_out = float(config["predictor"]["drop_out"])
@@ -73,9 +73,6 @@ def train_predictor_using_graph_dataset(predictor_dataset_folder):
     train_data, val_data, feature_size = load_predictor_dataset(predictor_dataset_folder)
     train_data = prepare_predictor_data_loader(train_data, batch_size=Batch_Size, shuffle=True)
     val_data = prepare_predictor_data_loader(val_data, batch_size=Batch_Size, shuffle=False)
-    ddp_kwargs = DistributedDataParallelKwargs(find_unused_parameters=True)
-    accelerator = Accelerator(kwargs_handlers=[ddp_kwargs])
-
 
     predictor, train_predictor, test_predictor = get_PredictorModel(config["predictor"]["Predictor_model"])
     set_seed()
@@ -98,9 +95,9 @@ def train_predictor_using_graph_dataset(predictor_dataset_folder):
                                       criterion=criterion,
                                       model_trainer=train_predictor)
 
-    accelerator.save_pretrained(model=best_predictor_model,save_directory=f"{config['path']['result_folder']}/predictor_model_weight")
-    # unwrapped_model = accelerator.unwrap_model(best_predictor_model)
-    # accelerator.save(unwrapped_model.state_dict(), save_path)
+    # accelerator.save_state(model=best_predictor_model,save_directory=f"{config['path']['result_folder']}/predictor_model_weight")
+    unwrapped_model = accelerator.unwrap_model(best_predictor_model)
+    accelerator.save(unwrapped_model.state_dict(), save_path)
     # add_config("predictor", "best_loss", round(best_loss, 6))
     metrics_list = map_predictor_metrics()
     predictor_performance = test_predictor(accelerator=accelerator,
@@ -128,6 +125,7 @@ def train_predictor_using_graph_dataset(predictor_dataset_folder):
 
 
 def predict_and_rank(e_search_space, predictor_graph_edge_index, feature_size):
+    Batch_Size = int(config['param']['Batch_Size'])
     set_seed()
     k = int(config["param"]["k"])
     predict_sample = int(config["param"]["predict_sample"])
@@ -199,6 +197,7 @@ def feat_coef_reduce_and_rank(e_search_space, predictor_graph_edge_index,
     # Load predictor model and weights
     base_space = deepcopy(e_search_space)
     reduction_start_time = time.time()
+    Batch_Size = int(config['param']['Batch_Size'])
     total_importance=[]
 
     if feature_importance_source == "gradients":
@@ -288,11 +287,12 @@ def feat_coef_reduce_and_rank(e_search_space, predictor_graph_edge_index,
                 dim=dim,
                 drop_out=drop_out,
                 out_channels=1)
-            best_predictor_model = accelerator.load_state(f"{config['path']['result_folder']}/predictor_model_weight")
+            model_weigth_path = f"{config['path']['result_folder']}/predictor_model_weight.pt"
+            predictor_model.load_state_dict(torch.load(model_weigth_path))
+            predictor_model = predictor_model.to(device)
+            predictor_model.eval()
         except:
             raise ValueError("Wrong pre-trained predictor path")
-
-
 
 
         TopK = predict_neural_performance_using_gnn(accelerator=accelerator,
@@ -319,6 +319,7 @@ def compute_shapley_value():
     num_seed = int(config["param"]["num_seed"])
     nsamples = int(config["param"]["shapley_nsamples"])
     start_time = time.time()
+    Batch_Size = int(config['param']['Batch_Size'])
     from sklearn.ensemble import RandomForestRegressor
     from sklearn.ensemble import StackingRegressor
     shap_type = config["param"]["shapley_shap_type"]
@@ -367,6 +368,7 @@ def compute_shapley_value():
 
 def compute_gradient_feature_importance(model, sample_dataset, criterion):
     model.eval()
+
     feature_importance = []
     for data in sample_dataset:
         data.x.requires_grad_(True)
@@ -389,8 +391,8 @@ def compute_gradient_feature_importance(model, sample_dataset, criterion):
 
 def prob_reduce_and_rank(e_search_space, predictor_graph_edge_index, feature_size, option_decoder, best_predictor_model,accelerator,ratio_treshold=0.3):
     set_seed()
-    dim = int(config["predictor"]["dim"])
-    drop_out = float(config["predictor"]["drop_out"])
+    Batch_Size = int(config['param']['Batch_Size'])
+
     k = int(config["param"]["k"])
     predict_sample = int(config["param"]["predict_sample"])
     search_metric = config["param"]["search_metric"]
@@ -511,8 +513,8 @@ def prob_reduce_and_rank(e_search_space, predictor_graph_edge_index, feature_siz
 
 def gradient_reduce_and_rank(e_search_space, predictor_graph_edge_index, feature_size, option_decoder, accelerator, best_predictor_model, ratio_treshold=0.3):
     set_seed()
-    dim = int(config["predictor"]["dim"])
-    drop_out = float(config["predictor"]["drop_out"])
+    Batch_Size = int(config['param']['Batch_Size'])
+
     k = int(config["param"]["k"])
     predict_sample = int(config["param"]["predict_sample"])
     search_metric = config["param"]["search_metric"]
@@ -581,12 +583,12 @@ def gradient_reduce_and_rank(e_search_space, predictor_graph_edge_index, feature
                         print(f"The option {option} is no longer present in the search space")
         print(f"The search space after {rnd} is : {e_search_space}")
         rnd += 1
-    print(f"The final search space is {e_search_space}")
-    sample_list = random_sampling(e_search_space=e_search_space, n_sample=0, predictor=True)
+    print(f"The final search space is:  {e_search_space}")
+    sample_list = random_sampling(e_search_space=e_search_space, n_sample=500, predictor=True)
     lists = [elt for elt in range(0, len(sample_list), int(config["param"]["batch_sample"]))]
     TopK_models = []
     start_predict_time = time.time()
-    print("Start prediction...")
+    print(" Predicting architecture performance...")
     edge_index = get_edge_index(model_config, predictor_graph_edge_index)
     for i in tqdm(lists, total=len(lists)):
         a = i + int(config["param"]["batch_sample"])
@@ -630,8 +632,7 @@ def gradient_reduce_and_rank(e_search_space, predictor_graph_edge_index, feature
 
 def prob_reduce_and_rank(e_search_space, predictor_graph_edge_index, feature_size, option_decoder,accelerator, best_predictor_model, ratio_treshold=0.3):
     set_seed()
-    dim = int(config["predictor"]["dim"])
-    drop_out = float(config["predictor"]["drop_out"])
+    Batch_Size = int(config['param']['Batch_Size'])
     k = int(config["param"]["k"])
     predict_sample = int(config["param"]["predict_sample"])
     search_metric = config["param"]["search_metric"]
@@ -778,7 +779,7 @@ def predict_neural_performance_using_gnn(accelerator, model, graphLoader):
                 prediction_dict[search_metric].append(record[1].item())
 
     accelerator.wait_for_everyone()
-        if accelerator.is_local_main_process:
+    if accelerator.is_local_main_process:
         df = pd.DataFrame.from_dict(prediction_dict)
         if metric_rule == "max":
             TopK = df.nlargest(n=k, columns=search_metric, keep="all")
@@ -791,6 +792,7 @@ def predict_neural_performance_using_gnn(accelerator, model, graphLoader):
 def rank_graphs(model, dataset, batch_size=32):
     set_seed()
     model.eval()
+    Batch_Size = int(config['param']['Batch_Size'])
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
     scores = []
     for batch in dataloader:

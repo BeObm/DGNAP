@@ -1,0 +1,34 @@
+
+ #############    Result report    (Time: 04-03_22h52)  #############
+Dataset: CS 
+Type task: node_classification 
+Accuracy_score of the best sampled model: 0 
+Search space reduction strategy: shapley_values 
+ Initial Search space: #function=14 | # Option: 62| #Architectures:318504960  
+ Final Search space: #function=14 | # Option: 36| #Architectures:72900 
+Type of predictor loss: one_hot
+Node feature size: GNN_ranking
+Predictor dataset type: graph
+search metric: Accuracy_score
+Predictor metric: kendall_corr
+Predictor type of criterion: MarginRankingLoss
+Type of sampling : controlled_stratified_sampling
+Total budget: 800
+Number of samples: 640
+Number of TopK models: 150
+Best sampled model: {'gnnConv1': 'GCNConv', 'gnnConv2': 'SGConv', 'aggregation1': 'mean', 'aggregation2': 'mean', 'normalize1': 'BatchNorm', 'normalize2': 'BatchNorm', 'activation1': 'tanh', 'activation2': 'linear', 'hidden_channels': 64, 'dropout': 0.6, 'lr': 0.005, 'weight_decay': 0.001, 'optimizer': 'adamW', 'criterion': 'CrossEntropyLoss'}
+Best Sampled model Accuracy_score: 0.0
+f"Best_model_Accuracy_score": 0.77698
+predictor pearson_corr: |Train= 0.892 |Val=0.8 |Test=-0.0992 
+predictor spearman_corr: |Train= 0.8681 |Val=0.7759 |Test=-0.0535 
+predictor kendall_corr: |Train= 0.7165 |Val=0.601 |Test=-0.0289 
+predictor Top_k_Acc: |Train= 0.803 |Val=0.7774 |Test=0.6839 
+predictor R2_score: |Train= 0.7923 |Val=0.6266 |Test=-63.2525 
+dataset_time_cost: 0.32
+search_space_reduction_time_cost: 2.4786
+Search time cost: 2509.7
+total search time cost: 2510.03
+Number of GPUs: 4.0
+---------------------------------------- END ----------------------------------------
+
+ 
