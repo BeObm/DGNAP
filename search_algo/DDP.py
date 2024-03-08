@@ -36,7 +36,7 @@ def prepare_data_loader(data, batch_size=0,shuffle=False):
     return dataloader
 
     
-def ddp_module(accelerator, total_epochs: int, model_to_train, optimizer, train_dataloader,criterion, model_trainer):
+def ddp_module(accelerator, total_epochs: int, model_to_train, optimizer, train_dataloader,criterion, model_trainer, type_model=""):
     set_seed()
     print("training model...")
     train_dataloader, model,optimizer = accelerator.prepare(train_dataloader,model_to_train,optimizer)
@@ -48,6 +48,18 @@ def ddp_module(accelerator, total_epochs: int, model_to_train, optimizer, train_
                       optimizer=optimizer,
                       accelerator=accelerator)
 
+    accelerator.wait_for_everyone()
+    if accelerator.is_main_process:
+        if type_model=="predictor":
+            save_path = f"{config['path']['result_folder']}/predictor_model_weight.pth"
+            print("==> Training param")
+            for param in model.parameters():
+                print(param)
+        else:
+            save_path = f"{config['path']['result_folder']}/architecture_model_weight.pth"
+
+        unwrapped_model = accelerator.unwrap_model(model)
+        torch.save(unwrapped_model.state_dict(), save_path)
     return model
 
  #

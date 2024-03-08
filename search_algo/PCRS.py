@@ -7,7 +7,7 @@ from torch_geometric.data import Data
 from search_space_manager.sample_models import *
 from load_data.load_data import load_dataset
 from GNN_models.graph_classification import *
-
+import glob
 import importlib
 from search_algo.DDP import *
 from tqdm.auto import tqdm
@@ -41,6 +41,7 @@ def get_performance_distributions(e_search_space,
     pbar = tqdm(total=len(model_list))
     pbar.set_description("training samples")
     for no, submodel in tqdm(enumerate(model_list)):
+        torch.cuda.empty_cache()
 
         txt_model = f"Model_Config: {[submodel[opt][0] for opt in submodel.keys()]} "
         submodel_config = {}
@@ -127,7 +128,7 @@ def get_performance_distributions(e_search_space,
         return dataset_file
 
 def get_best_model(topk_list, option_decoder, dataset):
-
+    Batch_Size = int(config['param']['Batch_Size'])
     set_seed()
     search_metric = config["param"]["search_metric"]
     metric_rule = config["param"]["best_search_metric_rule"]
@@ -143,18 +144,18 @@ def get_best_model(topk_list, option_decoder, dataset):
             data = torch.load(filename)
             data.y = data.y.view(-1, 1)
             if metric_rule == "max":
-                if Y < data.y.item():
-                    Y = data.y.item()
-                    submodel = data.model_config_choices
+                if max_performace < data.y.item():
+                    max_performace= data.y.item()
+                    bestmodel = copy.deepcopy(data.model_config_choices)
             elif metric_rule == 'min':
-                if Y > data.y.item():
-                    Y = data.y.item()
-                    submodel = data.model_config_choices
-            max_performace = Y
-            bestmodel = copy.deepcopy(submodel)
+                if max_performace > data.y.item():
+                    max_performace= data.y.item()
+                    bestmodel = copy.deepcopy(data.model_config_choices)
+
             for k, v in bestmodel.items():
                 if k != search_metric:
                     bestmodel[k] = v[0]
+        add_config("results", f"{search_metric}_of_best_sampled_model", max_performace)
     except:
         pass
     num_model = 0
@@ -166,6 +167,7 @@ def get_best_model(topk_list, option_decoder, dataset):
     train_dataset = prepare_data_loader(train_dataset, batch_size=Batch_Size, shuffle=True)
     val_dataset = prepare_data_loader(val_dataset, batch_size=Batch_Size, shuffle=False)
     for idx, row in topk_list.iterrows():
+        torch.cuda.empty_cache()
 
         num_model += 1
         dict_model = {}  #
@@ -193,8 +195,8 @@ def get_best_model(topk_list, option_decoder, dataset):
                                       numround=z_topk,
                                       shared_weight=best_loss_param_path,
                                       type_data="val")
-        predicted_performance.append(row[search_metric])
-        true_performance.append(model_performance)
+        predicted_performance.append(round(row[search_metric],4))
+        true_performance.append(round(model_performance,4))
         sys.stdout.write(f"Architecture {num_model}/{len(topk_list)}:{[dict_model[opt] for opt in dict_model.keys()]} : {search_metric}={model_performance}")
 
         if metric_rule == "max":
@@ -271,8 +273,9 @@ def run_model(submodel_config, train_data, test_data, in_chanels,
     params_config = get_option_maps(submodel_config)
     params_config["in_channels"] = in_chanels
     params_config["num_class"] = num_class
+    accelerator.free_memory()
     set_seed()
-    # accelerator.free_memory()
+
     new_model = GNN_Model(params_config)
 
     optimizer = params_config["optimizer"](new_model.parameters(),
@@ -291,7 +294,8 @@ def run_model(submodel_config, train_data, test_data, in_chanels,
                    optimizer=optimizer,
                    train_dataloader=train_data,
                    criterion=criterion,
-                   model_trainer=train_model)
+                   model_trainer=train_model,
+                   type_model=type_model)
 
         # trainer = (trainer.module if isinstance(trainer, DistributedDataParallel) else trainer)
         trainer.eval()

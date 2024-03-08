@@ -68,13 +68,12 @@ def get_pairwise_labels(graphs, labels):
 
 def map_predictor_criterion(criterion):
     if criterion == 'SmoothL1Loss':
-        return ttorch.nn.SmoothL1Loss(reduction='mean', beta=1)
+        return torch.nn.SmoothL1Loss(reduction='mean', beta=1)
     elif criterion == "MSELoss":
         return torch.nn.MSELoss(reduction='sum')
     elif criterion == "MarginRankingLoss":
         return torch.nn.MarginRankingLoss(margin=0.001)
-    elif criterion == "PairwiseLoss":
-        return pairwise_loss
+
     elif criterion == "ListNet":
         return torch.nn.KLDivLoss()
     else:
@@ -140,7 +139,14 @@ def evaluate_model_predictor(y_true, y_pred, metrics_list, title="Predictor trai
     for metric in metrics_list:
         metric_obj = importlib.import_module(f"predictor_models.utils")
         metric_function = getattr(metric_obj, metric)
-        predictor_performances[metric] = round(metric_function(np.squeeze(y_true), np.squeeze(y_pred)), 4)
+        try:
+            predictor_performances[metric] = round(metric_function(np.squeeze(y_true), np.squeeze(y_pred)), 4)
+        except:
+            if config["param"]["best_search_metric_rule"]=='max':
+              predictor_performances[metric] =0
+            else:
+                predictor_performances[metric] = 1
+
 
     predictor_data = {"True": np.squeeze(y_true), "predicted": np.squeeze(y_pred)}
     df = pd.DataFrame.from_dict(predictor_data)
@@ -160,9 +166,9 @@ def evaluate_model_predictor(y_true, y_pred, metrics_list, title="Predictor trai
     xmin = min(min(y_pred), min(y_true))
     xmax = max(max(y_pred), max(y_true))
 
-    if xmin < 0:
+    if xmin < 0 or np.isnan(xmin) or math.isnan(xmin):
         xmin = 0
-    if xmax > 100:
+    if xmax > 100 or np.isnan(xmax) or math.isnan(xmax):
         xmax = 100
 
     lst = [a for a in range(int(xmin), int(xmax) + 1)]

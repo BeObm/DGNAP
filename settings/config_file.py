@@ -15,7 +15,7 @@ accelerator = Accelerator(kwargs_handlers=[ddp_kwargs])
 num_workers = 8
 
 config = ConfigParser()
-ncluster=500
+ncluster=804
 
 
 RunCode = dates = datetime.now().strftime("%d-%m_%Hh%M")
@@ -59,20 +59,20 @@ def create_config_file(type_task, dataset_name,ngpu):
         "project_dir": project_root_dir,
         'config_filename': config_filename,
         "run_code": RunCode,
-        "Batch_Size":128,
+        "Batch_Size":96,
         "num_seed":42,
         "budget": 800,
         "k": 150,
         "z_sample": 1,  # Number of time  sampled models are trained before we report their performance
         "z_topk": 1,
-        "z_final": 10,
+        "z_final": 5,
         "train_ratio": 0.8,
         "nfcode": 56,  # number of digit for each function code when using embedding method
         "noptioncode": 8,
         "sample_model_epochs": 100,
-        "topk_model_epochs": 50,
-        "best_model_epochs": 100,
-        "patience": 100,
+        "topk_model_epochs": 100,
+        "best_model_epochs": 200,
+        "patience": 75,
         "encoding_method": "one_hot",  # ={one_hot, embedding,index_embedding}
         "type_sampling": "controlled_stratified_sampling",
         # random_sampling, uniform_sampling, controlled_stratified_sampling
@@ -82,7 +82,7 @@ def create_config_file(type_task, dataset_name,ngpu):
         "predict_sample": 500000,
         "shapley_shap_type":"tree",  # kernel, tree
         "shapley_nsamples":600,
-        "batch_sample": 100
+        "batch_sample": 10000
     }
 
     config["predictor"] = {
@@ -90,13 +90,13 @@ def create_config_file(type_task, dataset_name,ngpu):
         "predictor_metric": "kendall_corr",
         # , ["R2_score", "pearson_corr", "kendall_corr", "spearman_corr"], ["spearman_corr","map_score", "ndcg_score", "kendall_corr", "Top_k_Acc"]
         "dim": 1024,
-        "drop_out": 0.4,
+        "drop_out": 0.3,
         "lr": 0.0001,
         "wd": 0.0001,
         "momentum": 0.8,
-        "num_epoch": 500,
+        "num_epoch": 600,
         "optimizer": "adamW",
-        "patience": 50,
+        "patience": 200,
         "best_loss":0
     }
 

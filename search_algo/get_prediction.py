@@ -86,18 +86,19 @@ def train_predictor_using_graph_dataset(predictor_dataset_folder):
                       lr=lr,
                       weight_decay=wd)
     criterion = map_predictor_criterion(config["predictor"]["criterion"])
-    save_path=f"{config['path']['result_folder']}/predictor_model_weight.pt"
+    # save_path=f"{config['path']['result_folder']}/predictor_model_weight.pt"
     best_predictor_model = ddp_module(accelerator=accelerator,
                                       total_epochs=num_epoch,
                                       model_to_train=predictor_model,
                                       optimizer=optimizer,
                                       train_dataloader=train_data,
                                       criterion=criterion,
-                                      model_trainer=train_predictor)
+                                      model_trainer=train_predictor,
+                                      type_model="predictor")
 
     # accelerator.save_state(model=best_predictor_model,save_directory=f"{config['path']['result_folder']}/predictor_model_weight")
-    unwrapped_model = accelerator.unwrap_model(best_predictor_model)
-    accelerator.save(unwrapped_model.state_dict(), save_path)
+    # unwrapped_model = accelerator.unwrap_model(best_predictor_model)
+    # accelerator.save(unwrapped_model.state_dict(), save_path)
     # add_config("predictor", "best_loss", round(best_loss, 6))
     metrics_list = map_predictor_metrics()
     predictor_performance = test_predictor(accelerator=accelerator,
@@ -223,7 +224,6 @@ def feat_coef_reduce_and_rank(e_search_space, predictor_graph_edge_index,
 
     elif feature_importance_source == "shapley_values":
         feature_importance = compute_shapley_value()
-        print("feature importance size is:", len(feature_importance))
     else:
         raise ValueError("Wrong value for feature importance computation type")
 
@@ -231,7 +231,6 @@ def feat_coef_reduce_and_rank(e_search_space, predictor_graph_edge_index,
         grouped_data = list(zip(*feature_importance))
         # Calculate the mean for each group
         fi = [sum(group) / len(group) for group in grouped_data]
-        print("This is the final fi", fi)
     else:
         fi = torch.mean(feature_importance, dim=0).tolist()
     print(f"Feature importance details is as follows: | # features:{len(fi)}| max:{max(fi)} |Min:{min(fi)} ")
@@ -252,14 +251,14 @@ def feat_coef_reduce_and_rank(e_search_space, predictor_graph_edge_index,
                 pass
 
     df_sum =pd.DataFrame(shap_summary)
-    df_sum.to_excel(f"{config['path']['result_folder']}/Shapley——values-summary.xlsx")
+    df_sum.to_excel(f"""{config['path']['result_folder']}/Shapley_values_summary_{config["dataset"]["dataset_name"]}_{config["param"]["nb_gpu"]}GPU_.xlsx""")
     add_config("time", "sp_reduce", round(time.time() - reduction_start_time, 4))
     get_final_sp_details(e_search_space)
-    sample_list = random_sampling(e_search_space=e_search_space, n_sample=0, predictor=True)
+    sample_list = random_sampling(e_search_space=e_search_space, n_sample=20, predictor=True)
     lists = [elt for elt in range(0, len(sample_list), int(config["param"]["batch_sample"]))]
     TopK_models = []
     start_predict_time = time.time()
-    print("Start prediction...")
+    print("==> Start prediction...")
 
     for i in tqdm(lists, total=len(lists)):
         a = i + int(config["param"]["batch_sample"])
@@ -287,9 +286,11 @@ def feat_coef_reduce_and_rank(e_search_space, predictor_graph_edge_index,
                 dim=dim,
                 drop_out=drop_out,
                 out_channels=1)
-            model_weigth_path = f"{config['path']['result_folder']}/predictor_model_weight.pt"
+            model_weigth_path = f"{config['path']['result_folder']}/predictor_model_weight.pth"
             predictor_model.load_state_dict(torch.load(model_weigth_path))
-            predictor_model = predictor_model.to(device)
+            for param in predictor_model.parameters():
+                print(param)
+            # predictor_model = predictor_model.to(device)
             predictor_model.eval()
         except:
             raise ValueError("Wrong pre-trained predictor path")
@@ -301,18 +302,18 @@ def feat_coef_reduce_and_rank(e_search_space, predictor_graph_edge_index,
         TopK_models.append(TopK)
     TopK_model = pd.concat(TopK_models)
     if metric_rule == "max":
-        TopK_model = TopK_model.nlargest(k, search_metric, keep="all")
+        TopK_ = TopK_model.nlargest(k, search_metric, keep="all")
     elif metric_rule == 'min':
-        TopK_model = TopK_model.nsmallest(k, search_metric, keep="all")
+        TopK_ = TopK_model.nsmallest(k, search_metric, keep="all")
     else:
         print(
             f"{'++' * 20} {metric_rule} is an invalid rule. Metric rule should be 'min' or 'max'")
         sys.exit()
-    TopK_final = TopK_model[:k]
+    TopK_final = TopK_[:k]
     prediction_time = round(time.time() - start_predict_time, 2)
-    print("\n End architecture performance prediction. ")
+    print("\n ==> End of architecture performance prediction. ")
     add_config("time", "pred_time", prediction_time)
-    TopK_model.to_excel(f"{config['path']['result_folder']}/Topk_model_configs.xlsx")
+    TopK_final.to_excel(f"{config['path']['result_folder']}/Topk_model_configs.xlsx")
     return TopK_final
 
 def compute_shapley_value():
@@ -359,7 +360,7 @@ def compute_shapley_value():
         shap_value = explainer(X)
         shap.plots.bar(shap_value)
 
-    print(f"Shapley computation time is {round((time.time() - start_time) / 60, 4)} Minutes")
+    print(f"==> Shapley computation time is {round((time.time() - start_time) / 60, 4)} Minutes")
 
     # print(f"This is shapley value format: {vars(shap_value._s)}")
 
@@ -466,7 +467,7 @@ def prob_reduce_and_rank(e_search_space, predictor_graph_edge_index, feature_siz
     add_config("time", "sp_reduce", round(time.time() - reduction_start_time, 4))
     get_final_sp_details(e_search_space)
 
-    sample_list = random_sampling(e_search_space=e_search_space, n_sample=0, predictor=True)
+    sample_list = random_sampling(e_search_space=e_search_space, n_sample=50, predictor=True)
     lists = [elt for elt in range(0, len(sample_list), int(config["param"]["batch_sample"]))]
     TopK_models = []
     start_predict_time = time.time()
@@ -584,7 +585,7 @@ def gradient_reduce_and_rank(e_search_space, predictor_graph_edge_index, feature
         print(f"The search space after {rnd} is : {e_search_space}")
         rnd += 1
     print(f"The final search space is:  {e_search_space}")
-    sample_list = random_sampling(e_search_space=e_search_space, n_sample=500, predictor=True)
+    sample_list = random_sampling(e_search_space=e_search_space, n_sample=0, predictor=True)
     lists = [elt for elt in range(0, len(sample_list), int(config["param"]["batch_sample"]))]
     TopK_models = []
     start_predict_time = time.time()
@@ -754,6 +755,7 @@ def predict_neural_performance_using_gnn(accelerator, model, graphLoader):
     set_seed()
     search_metric = config["param"]["search_metric"]
     metric_rule = config["param"]["best_search_metric_rule"]
+    model =accelerator.prepare(model)
     model.eval()
     prediction_dict = {'model_config': [], search_metric: []}
     k = int(config["param"]["k"])
@@ -770,23 +772,23 @@ def predict_neural_performance_using_gnn(accelerator, model, graphLoader):
         all_choices=accelerator.gather(choice)
         performance = pred.cpu().detach().numpy()
         choices = all_choices.cpu().detach().numpy()
-        records = list(zip(choices,performance))
+
 
         accelerator.wait_for_everyone()
-        if accelerator.is_local_main_process:
-            for record in records:
-                prediction_dict['model_config'].append(config_list[record[0]])
-                prediction_dict[search_metric].append(record[1].item())
+        records = list(zip(choices, performance))
+        for record in records:
+            prediction_dict['model_config'].append(config_list[record[0]])
+            prediction_dict[search_metric].append(record[1].item())
 
     accelerator.wait_for_everyone()
-    if accelerator.is_local_main_process:
-        df = pd.DataFrame.from_dict(prediction_dict)
-        if metric_rule == "max":
-            TopK = df.nlargest(n=k, columns=search_metric, keep="all")
-        elif metric_rule == 'min':
-            TopK = df.nsmallest(n=k, columns=search_metric, keep="all")
-        TopK = TopK[:k]
-        return TopK
+
+    df = pd.DataFrame.from_dict(prediction_dict)
+    if metric_rule == "max":
+        TopK = df.nlargest(n=k, columns=search_metric, keep="all")
+    elif metric_rule == 'min':
+        TopK = df.nsmallest(n=k, columns=search_metric, keep="all")
+    TopK = TopK[:k]
+    return TopK
 
 
 def rank_graphs(model, dataset, batch_size=32):
