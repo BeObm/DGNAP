@@ -30,7 +30,7 @@ if __name__ == "__main__":
     parser.add_argument("--best_search_metric_rule", type=str, default="max", help="best search metric rule",choices=["min","max"])
     parser.add_argument("--predictor", type=str, default="GNN_ranking", help="predictor type", choices=["GNN_ranking", "GNN_performance"])
     parser.add_argument("--predictor_criterion", type=str, default="MarginRankingLoss", help="loss function for predictor", choices=["MSELoss","PairwiseLoss", "MarginRankingLoss"])
-    parser.add_argument("--nb_gpu", type=str, default=4, help="Number of GPU")
+    parser.add_argument("--nb_gpu", type=str, default=1, help="Number of GPU")
     args = parser.parse_args()
     create_config_file(args.type_task,args.dataset,args.nb_gpu)
     set_seed()
@@ -59,9 +59,9 @@ if __name__ == "__main__":
 
 
     e_search_space, option_decoder, predictor_graph_edge_index = create_e_search_space(args.search_space_name)
-    # performance_records_path = get_performance_distributions(e_search_space, dataset,predictor_graph_edge_index)
-    performance_records_path = f"""data/predictor_dataset/{config['dataset']['dataset_name']}/{config['dataset']['dataset_name']}_{config['param']['nb_gpu']}GPU"""
-    add_config("path", "predictor_dataset_folder", performance_records_path)
+    performance_records_path = get_performance_distributions(e_search_space, dataset,predictor_graph_edge_index)
+    # performance_records_path = f"""data/predictor_dataset/{config['dataset']['dataset_name']}/{config['dataset']['dataset_name']}_{config['param']['nb_gpu']}GPU"""
+    # add_config("path", "predictor_dataset_folder", performance_records_path)
 
     search_start = time.time()
     dataset_time_cost = round(search_start - timestart, 2)
