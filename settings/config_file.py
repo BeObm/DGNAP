@@ -61,17 +61,17 @@ def create_config_file(type_task, dataset_name,ngpu):
         "run_code": RunCode,
         "Batch_Size":96,
         "num_seed":42,
-        "budget": 800,
-        "k": 150,
+        "budget": 80,
+        "k": 15,
         "z_sample": 1,  # Number of time  sampled models are trained before we report their performance
         "z_topk": 1,
         "z_final": 5,
         "train_ratio": 0.8,
         "nfcode": 56,  # number of digit for each function code when using embedding method
         "noptioncode": 8,
-        "sample_model_epochs": 100,
-        "topk_model_epochs": 100,
-        "best_model_epochs": 200,
+        "sample_model_epochs": 5,
+        "topk_model_epochs": 5,
+        "best_model_epochs": 20,
         "patience": 75,
         "encoding_method": "one_hot",  # ={one_hot, embedding,index_embedding}
         "type_sampling": "controlled_stratified_sampling",
@@ -79,7 +79,7 @@ def create_config_file(type_task, dataset_name,ngpu):
         "feature_size_choice": "total_choices",
         # total_functions total_choices  # for one hot encoding using graph dataset for predictor, use"total choices
         'type_input_graph': "directed",
-        "predict_sample": 500000,
+        "predict_sample": 500,
         "shapley_shap_type":"tree",  # kernel, tree
         "shapley_nsamples":600,
         "batch_sample": 10000
@@ -94,7 +94,7 @@ def create_config_file(type_task, dataset_name,ngpu):
         "lr": 0.0001,
         "wd": 0.0001,
         "momentum": 0.8,
-        "num_epoch": 600,
+        "num_epoch": 60,
         "optimizer": "adamW",
         "patience": 200,
         "best_loss":0
