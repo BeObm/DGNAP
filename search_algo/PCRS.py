@@ -9,7 +9,7 @@ from load_data.load_data import load_dataset
 from GNN_models.graph_classification import *
 import glob
 import importlib
-from search_algo.DDP import *
+from search_algo.DCDL import *
 from tqdm.auto import tqdm
 
 def get_performance_distributions(e_search_space,

@@ -21,7 +21,7 @@ ncluster=804
 RunCode = dates = datetime.now().strftime("%d-%m_%Hh%M")
 
 
-def set_seed():
+def set_seed(seed=42):
     # os.CUBLAS_WORKSPACE_CONFIG="4096:8"
     seed=int(config["param"]["num_seed"])
     np.random.seed(seed)

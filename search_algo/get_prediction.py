@@ -10,7 +10,7 @@ from torch_geometric.loader import DataLoader
 from load_data.load_predictor_dataset import *
 # from search_space_manager.search_space import *
 from search_space_manager.sample_models import *
-from search_algo.DDP import *
+from search_algo.DCDL import *
 from copy import deepcopy
 from sklearn.tree import DecisionTreeRegressor
 import xgboost
