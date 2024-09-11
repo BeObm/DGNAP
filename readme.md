@@ -1,4 +1,7 @@
 # DGNAP
  Distributed training based graph neural predictor with progressive search space prunning.
 
+
+ Graph neural architecture search (GNAS) approaches have significantly advanced predictive modeling, yet optimizing these methods for enhanced accuracy and scalability continues to pose challenges. In this paper, we introduce GraphNAP++, an innovative method that integrates Shapley-value-guided search space pruning with data-centric distributed learning (DCDL). The primary aim is to overcome the scalability and efficiency limitations inherent in current GNAS methodologies. GraphNAP++ begins by selecting a set of architectures from the search space, which are then evaluated on a graph validation dataset using DCDL. These architectures are encoded, and a neural predictor is trained to forecast their performance. Shapley values are calculated to prune the search space, retaining only the most influential options. Subsequently, the neural predictor is employed to estimate the performance of all architectures within the reduced search space. The highest-performing architectures are then selected for final performance evaluation. Experimental assessments on benchmark datasets in distributed learning environments demonstrate the efficacy of GraphNAP++ in both graph and node classification tasks, underscoring its potential to advance the field of graph neural networks.
+
 More detailed description ASAP!
